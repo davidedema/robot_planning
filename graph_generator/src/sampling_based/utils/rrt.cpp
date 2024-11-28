@@ -54,8 +54,8 @@ void RRT::add_node(KDNode_t &new_node, KDNode_t &nearest_node)
 bool RRT::valid_point(KDNode_t &sampled_point, polygon_t &map)
 {
   point_t aux_point;
-  aux_point.x(sampled_point.at(0));
-  aux_point.1(sampled_point.at(1));
+  aux_point.set<0>(sampled_point.at(0));
+  aux_point.set<1>(sampled_point.at(1));
 
   return boost::geometry::within(aux_point, map);
 }

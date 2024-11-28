@@ -18,35 +18,59 @@ int main(int argc, char **argv)
   }
 
   // test obstacles
-  auto obs = m->get_obstacles();
+  // auto obs = m->get_obstacles();
 
-  for (const auto &obstacle : obs)
-  {
-    for (auto it = boost::begin(boost::geometry::exterior_ring(obstacle)); it != boost::end(boost::geometry::exterior_ring(obstacle)); ++it)
-    {
-      double x = boost::geometry::get<0>(*it);
-      double y = boost::geometry::get<1>(*it);
-      cout << "X: " << x;
-      cout << " Y: " << y << endl;
-    }
-  }
-  cout << " --------------------------------------- " << endl;
-  // test map borders
-  auto borders = m->get_borders();
-  for (auto it = boost::begin(boost::geometry::exterior_ring(borders)); it != boost::end(boost::geometry::exterior_ring(borders)); ++it)
+  // for (const auto &obstacle : obs)
+  // {
+  //   for (auto it = boost::begin(boost::geometry::exterior_ring(obstacle)); it != boost::end(boost::geometry::exterior_ring(obstacle)); ++it)
+  //   {
+  //     double x = boost::geometry::get<0>(*it);
+  //     double y = boost::geometry::get<1>(*it);
+  //     cout << "X: " << x;
+  //     cout << " Y: " << y << endl;
+  //   }
+  // }
+  // cout << " --------------------------------------- " << endl;
+  // // test map borders
+  // auto borders = m->get_borders();
+  // for (auto it = boost::begin(boost::geometry::exterior_ring(borders)); it != boost::end(boost::geometry::exterior_ring(borders)); ++it)
+  // {
+  //   double x = boost::geometry::get<0>(*it);
+  //   double y = boost::geometry::get<1>(*it);
+  //   cout << "X: " << x;
+  //   cout << " Y: " << y << endl;
+  // }
+  // cout << " --------------------------------------- " << endl;
+  // auto gate = m->get_gate();
+  // for (const auto point : gate)
+  // {
+  //   cout << point << endl;
+  // }
+  // RCLCPP_INFO(m->get_logger(), "\033[1;32m Map information received!\033[0m");
+
+  // cout << " --------------------------------------- " << endl;
+  RCLCPP_INFO(m->get_logger(), "\033[1;32m Print map\033[0m");
+  auto map = m->get_map();
+
+  // cout << map.size() << endl;
+
+  for (auto it = boost::begin(boost::geometry::exterior_ring(map)); it != boost::end(boost::geometry::exterior_ring(map)); ++it)
   {
     double x = boost::geometry::get<0>(*it);
     double y = boost::geometry::get<1>(*it);
     cout << "X: " << x;
     cout << " Y: " << y << endl;
   }
-  cout << " --------------------------------------- " << endl;
-  auto gate = m->get_gate();
-  for (const auto point : gate)
+  for (const auto &poly : map.inners())
   {
-    cout << point << endl;
+    for (const auto &point : poly)
+    {
+      double x = boost::geometry::get<0>(point);
+      double y = boost::geometry::get<1>(point);
+      cout << "X: " << x;
+      cout << " Y: " << y << endl;
+    }
   }
-  RCLCPP_INFO(m->get_logger(), "\033[1;32m Map information received!\033[0m");
   rclcpp::shutdown();
   cout << "Done!" << endl;
   return 0;

@@ -1,8 +1,5 @@
 #include "graph_generator/graph_node.hpp"
 
-
-// TODO: AGGIUNGERE "BUCHI" SULLA MAPPA (OSTACOLI)
-
 GraphGenerator::GraphGenerator() : Node("GraphGenerator")
 {
 
@@ -121,4 +118,32 @@ void GraphGenerator::set_gate(const geometry_msgs::msg::PoseArray &msg)
 pose_t GraphGenerator::get_gate()
 {
   return gate;
+}
+
+polygon_t GraphGenerator::get_map()
+{
+  if (!is_map_created)
+  {
+    for (auto it = boost::begin(boost::geometry::exterior_ring(map_borders)); it != boost::end(boost::geometry::exterior_ring(map_borders)); ++it)
+    {
+      boost::geometry::append(map.outer(), *it);
+    }
+    map.inners().resize(5);
+    int i = 0;
+    // iterate through all obstacles
+    for (const auto &obstacle : obstacle_arr)
+    {
+      for (const auto &point : obstacle.outer())
+      {
+        boost::geometry::append(map.inners()[i], point);
+      }
+      i++;
+    }
+    is_map_created = true;
+    return map;
+  }
+  else
+  {
+    return map;
+  }
 }

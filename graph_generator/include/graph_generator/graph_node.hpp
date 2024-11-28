@@ -42,6 +42,9 @@ public:
   bool borders_r_;
   bool obstacles_r_;
   bool gates_r_;
+  
+  // flag for map creation
+  bool is_map_created;
 
   // setter for map
   void set_obstacles(const obstacles_msgs::msg::ObstacleArrayMsg &msg);
@@ -53,11 +56,15 @@ public:
   polygon_t get_borders();
   pose_t get_gate();
 
+  // get the map (polygon with holes replacing the obstacles)
+  polygon_t get_map();
+
 private:
   // map values
   std::vector<polygon_t> obstacle_arr;
   polygon_t map_borders;
   pose_t gate;
+  polygon_t map;
 
   // subscriber
   rclcpp::Subscription<geometry_msgs::msg::Polygon>::SharedPtr subsctiption_borders_;
