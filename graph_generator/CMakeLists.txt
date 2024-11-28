@@ -29,6 +29,8 @@ find_package(Boost 1.74)
 add_executable(test_graph_generator 
   src/simple_node.cpp
   src/graph_node.cpp
+  src/sampling_based/utils/rrt.cpp
+  src/sampling_based/utils/kdtree.cpp
   )
 
 ament_target_dependencies(test_graph_generator

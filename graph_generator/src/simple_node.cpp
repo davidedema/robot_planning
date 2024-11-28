@@ -1,4 +1,5 @@
 #include "graph_generator/graph_node.hpp"
+#include "graph_generator/sampling_based/utils/rrt.hpp"
 
 using namespace std;
 

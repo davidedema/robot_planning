@@ -1,5 +1,8 @@
 #include "graph_generator/graph_node.hpp"
 
+
+// TODO: AGGIUNGERE "BUCHI" SULLA MAPPA (OSTACOLI)
+
 GraphGenerator::GraphGenerator() : Node("GraphGenerator")
 {
 
