@@ -157,11 +157,25 @@ int main(int argc, char **argv)
   std::vector<std::vector<double>> points;
 
   // start sampling nodes with rrt
-  for (uint i = 0; i < 500; i++)
+  auto point_0 = _rrt.get_random_point(1, map);
+  if (_rrt.add_node(point_0))
   {
+    cout << "Added first node " << point_0.at(0) << point_0.at(1) << " , starting RRT..." << endl;
+  }
+  for (uint i = 2; i < 1500; i++)
+  {
+    std::cout << "----------------" << std::endl;
     auto point = _rrt.get_random_point(i, map);
-    cout << point.at(0) << "  " << point.at(1) << endl;
-    points.push_back(point);
+    std::cout << point.at(0) << " " << point.at(1) << std::endl;
+    auto nearest = _rrt.get_nn(point, 1);
+    std::cout << nearest.at(0) << " " << nearest.at(1) << std::endl;
+    auto new_point = _rrt.next_point(point, nearest, map);
+    std::cout << new_point.at(0) << " " << new_point.at(1) << std::endl;
+    if (_rrt.add_edge(new_point, nearest, map))
+    {
+      cout << "Added new node" << endl;
+      points.push_back(new_point);
+    }
   }
 
   // Pass points to the node

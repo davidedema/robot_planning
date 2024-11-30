@@ -32,8 +32,8 @@ class RRT
 private:
 
   uint samples = 100;
-  double d_max = 2;
-  double d = 1.5;
+  double d_max = 0.5;
+  double d = 0.25;
   Graph g;
 
 public:
@@ -56,7 +56,8 @@ public:
   void add_kd_node(KDNode_t &node);
   Graph::vertex_descriptor find_vertex_by_node(const Graph &g, const KDNode_t &node);
   bool are_nodes_equal(const KDNode_t& a, const KDNode_t& b);
-  bool add_node(KDNode_t &new_node, KDNode_t &nearest_node, polygon_t &map);
+  bool add_edge(KDNode_t &new_node, KDNode_t &nearest_node, polygon_t &map);
+  bool add_node(KDNode_t &new_node);
   bool valid_point(KDNode_t &result, polygon_t &map);
   bool valid_segment(KDNode_t &start, KDNode_t &end, polygon_t &map);
 };

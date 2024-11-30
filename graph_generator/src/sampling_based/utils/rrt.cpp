@@ -39,6 +39,7 @@ KDNode_t RRT::get_random_point(int index, polygon_t &map)
     }
     else
     {
+      std::cout << sampled_point.at(0) << " " << sampled_point.at(1) << std::endl;
       sampled_point.clear();
       std::cout
           << "Sample not valid!\n";
@@ -71,7 +72,7 @@ KDNode_t RRT::next_point(KDNode_t &sampled_point, KDNode_t &nearest, polygon_t &
   // find offset
   direction.at(0) = direction.at(0) * d;
   direction.at(1) = direction.at(1) * d;
-  KDNode_t new_point = {sampled_point.at(0) + direction.at(0), sampled_point.at(1) + direction.at(1)};
+  KDNode_t new_point = {nearest.at(0) + direction.at(0), nearest.at(1) + direction.at(1)};
   // if it is valid
   if (this->valid_point(new_point, map))
   {
@@ -98,20 +99,24 @@ Graph::vertex_descriptor RRT::find_vertex_by_node(const Graph &g, const KDNode_t
   throw std::runtime_error("Parent node not found in the graph");
 }
 
-bool RRT::are_nodes_equal(const KDNode_t& a, const KDNode_t& b) {
-    // Check if sizes are equal
-    if (a.size() != b.size()) return false;
+bool RRT::are_nodes_equal(const KDNode_t &a, const KDNode_t &b)
+{
+  // Check if sizes are equal
+  if (a.size() != b.size())
+    return false;
 
-    // Compare each element
-    for (size_t i = 0; i < a.size(); ++i) {
-        if (a[i] != b[i]) {
-            return false;
-        }
+  // Compare each element
+  for (size_t i = 0; i < a.size(); ++i)
+  {
+    if (a[i] != b[i])
+    {
+      return false;
     }
-    return true;
+  }
+  return true;
 }
 
-bool RRT::add_node(KDNode_t &new_node, KDNode_t &nearest_node, polygon_t &map)
+bool RRT::add_edge(KDNode_t &new_node, KDNode_t &nearest_node, polygon_t &map)
 {
   //  add path between new_node and nearest_node
   //! if the path and the points are inside the polygon
@@ -126,9 +131,13 @@ bool RRT::add_node(KDNode_t &new_node, KDNode_t &nearest_node, polygon_t &map)
   }
   std::cout << "Unfeasable path" << std::endl;
   return false;
-
 }
-
+bool RRT::add_node(KDNode_t &new_node)
+{
+  auto v_new = boost::add_vertex(new_node, g);
+  this->add_kd_node(new_node);
+  return true;
+}
 
 bool RRT::valid_point(KDNode_t &sampled_point, polygon_t &map)
 {
@@ -139,19 +148,22 @@ bool RRT::valid_point(KDNode_t &sampled_point, polygon_t &map)
   return boost::geometry::within(aux_point, map);
 }
 
+// TODO: FIX THIS CODE !!!!
 bool RRT::valid_segment(KDNode_t &start, KDNode_t &end, polygon_t &map)
 {
   // check if a segment with start and end points whole within the polygon map
 
   point_t start_point = point_t(start.at(0), start.at(1));
   point_t end_point = point_t(end.at(0), end.at(1));
-
+  std::cout << "VALID SEGMENT" << std::endl;
+  // std::cout << start.at(0) << " " << start.at(1) << std::endl;
+  // std::cout << end.at(0) << " " << end.at(1) << std::endl;
   segment_t segment = segment_t(start_point, end_point);
   if (!boost::geometry::intersects(segment, map))
   {
     return true;
   }
-  return false;
+  return true;
 }
 
 void RRT::add_kd_node(KDNode_t &node)
