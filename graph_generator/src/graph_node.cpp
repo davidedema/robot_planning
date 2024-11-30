@@ -26,6 +26,7 @@ void GraphGenerator::callback_borders(const geometry_msgs::msg::Polygon::SharedP
 {
   if (!msg->points.empty())
   {
+    RCLCPP_INFO(this->get_logger(), "entered1");
     this->set_borders(*msg);
     borders_r_ = true;
   }
@@ -39,6 +40,7 @@ void GraphGenerator::callback_obstacles(const obstacles_msgs::msg::ObstacleArray
 {
   if (!msg->obstacles.empty())
   {
+    RCLCPP_INFO(this->get_logger(), "entered2");
     this->set_obstacles(*msg);
     obstacles_r_ = true;
   }
@@ -52,8 +54,9 @@ void GraphGenerator::callback_gates(const geometry_msgs::msg::PoseArray::SharedP
 {
   if (!msg->poses.empty())
   {
-    this->set_gate(*msg);
+    RCLCPP_INFO(this->get_logger(), "entered3");
     gates_r_ = true;
+    this->set_gate(*msg);
   }
   else
   {

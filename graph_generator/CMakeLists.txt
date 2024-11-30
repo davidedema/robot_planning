@@ -13,6 +13,7 @@ find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(obstacles_msgs REQUIRED)
 find_package(Boost 1.74)
+find_package(visualization_msgs REQUIRED)
 
 # add_executable(graph_generator src/graph_node.cpp)
 # ament_target_dependencies(graph_generator rclcpp geometry_msgs obstacles_msgs)
@@ -36,11 +37,19 @@ add_executable(test_graph_generator
 ament_target_dependencies(test_graph_generator
   rclcpp
   geometry_msgs
+  visualization_msgs
   obstacles_msgs
 )
 
 target_link_libraries(test_graph_generator Boost::headers)
 target_include_directories(test_graph_generator PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+
+
+add_executable(polygon_publisher src/display_poly.cpp)
+ament_target_dependencies(polygon_publisher rclcpp visualization_msgs geometry_msgs)
+install(TARGETS polygon_publisher DESTINATION lib/${PROJECT_NAME})
+
 
 install(TARGETS
   test_graph_generator

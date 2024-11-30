@@ -3,33 +3,60 @@
 #include <vector>
 #include <boost/geometry.hpp>
 #include <boost/geometry/geometries/polygon.hpp>
+#include <time.h>
+#include <cmath>
+#include <cstdlib>
+#include <iostream>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/graph_traits.hpp>
 
 #include "graph_generator/sampling_based/utils/kdtree.hpp"
 
 typedef boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> point_t;
 typedef boost::geometry::model::polygon<point_t> polygon_t;
 typedef std::vector<double> KDNode_t;
+typedef boost::geometry::model::segment<point_t> segment_t;
 
-class RRT{
-  
-  private:
 
-    uint samples = 100;
+// Define the graph type
+using Graph = boost::adjacency_list<
+    boost::vecS,            // Store edges in a vector
+    boost::vecS,            // Store vertices in a vector
+    boost::undirectedS,     // Undirected graph
+    KDNode_t                // Vertex properties
+>;
 
-  public:
+class RRT
+{
 
-    std::vector<KDNode_t> rrt_tree;
+private:
 
-    // constructor
-    RRT(KDNode_t &init);
-    // distructor
-    ~RRT();
+  uint samples = 100;
+  double d_max = 2;
+  double d = 1.5;
+  Graph g;
 
-    // main functions
-    KDNode_t get_random_point(int index, polygon_t &map);
-    KDNode_t next_point(KDNode_t &sampled_point, KDNode_t &nearest);
-    KDNode_t get_parent(KDNode_t &child);
-    void add_node(KDNode_t &new_node, KDNode_t &nearest_node);
-    bool valid_point(KDNode_t &result, polygon_t &map);
+public:
 
-};  
+  // KDTREE things
+  Kdtree::KdNodeVector nodes;
+
+  std::vector<KDNode_t> rrt_tree;
+
+  // constructor
+  RRT();
+  // distructor
+  ~RRT();
+
+  // main functions
+  KDNode_t get_random_point(int index, polygon_t &map);
+  KDNode_t next_point(KDNode_t &sampled_point, KDNode_t &nearest, polygon_t &map);
+  KDNode_t get_parent(KDNode_t &child);
+  KDNode_t get_nn(KDNode_t &sampled_point, int n_k=1);
+  void add_kd_node(KDNode_t &node);
+  Graph::vertex_descriptor find_vertex_by_node(const Graph &g, const KDNode_t &node);
+  bool are_nodes_equal(const KDNode_t& a, const KDNode_t& b);
+  bool add_node(KDNode_t &new_node, KDNode_t &nearest_node, polygon_t &map);
+  bool valid_point(KDNode_t &result, polygon_t &map);
+  bool valid_segment(KDNode_t &start, KDNode_t &end, polygon_t &map);
+};
