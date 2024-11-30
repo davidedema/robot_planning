@@ -204,11 +204,10 @@ def generate_launch_description():
 
     # General arguments
     use_sim_time = LaunchConfiguration('use_sim_time', default='true')
-    n_shelfini   = LaunchConfiguration('n_shelfini', default='3')
 
     # Gazebo simulation arguments
     use_gui           = LaunchConfiguration('use_gui', default='true')
-    use_rviz          = LaunchConfiguration('use_rviz', default='true')
+    use_rviz          = LaunchConfiguration('use_rviz', default='false')
     rviz_config_file  = LaunchConfiguration('rviz_config_file', default=os.path.join(shelfino_desc_pkg, 'rviz', 'shelfino.rviz'))
     gazebo_world_file = LaunchConfiguration('gazebo_world_file', default=os.path.join(shelfino_gaze_pkg, 'worlds', 'empty.world'))
 
@@ -220,7 +219,7 @@ def generate_launch_description():
     # Map package arguments
     map_env_params_file = LaunchConfiguration('map_env_params_file', default=map_env_params_file_path)
     gen_map_params_file = LaunchConfiguration('gen_map_params_file', default=gen_map_params_file_path)
-    victims_activated = LaunchConfiguration('victims_activated', default='true')
+    victims_activated = LaunchConfiguration('victims_activated', default='false')
     generate_new_map_config = LaunchConfiguration('generate_new_map_config', default='true')
     
 
@@ -231,11 +230,6 @@ def generate_launch_description():
             'use_sim_time',
             default_value=use_sim_time,
             description='Use simulation (Gazebo) clock if true'
-        ),
-        DeclareLaunchArgument(
-            'n_shelfini',
-            default_value=n_shelfini,
-            description='The number of Shelfini to spawn'
         ),
 
         # Gazebo simulation arguments
@@ -295,7 +289,7 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'victims_activated',
             default_value=victims_activated,
-            choices=['true'],
+            choices=['false'],
             description='Whether to activate the victims or not'
         ),
         DeclareLaunchArgument(
