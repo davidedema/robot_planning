@@ -184,24 +184,7 @@ int main(int argc, char **argv)
   // Keep the node alive
   rclcpp::spin(node);
 
-  // for (auto it = boost::begin(boost::geometry::exterior_ring(map)); it != boost::end(boost::geometry::exterior_ring(map)); ++it)
-  // {
-  //   double x = boost::geometry::get<0>(*it);
-  //   double y = boost::geometry::get<1>(*it);
-  //   cout << "X: " << x;
-  //   cout << " Y: " << y << endl;
-  // }
-  // for (const auto &poly : map.inners())
-  // {
-  //   for (const auto &point : poly)
-  //   {
-  //     double x = boost::geometry::get<0>(point);
-  //     double y = boost::geometry::get<1>(point);
-  //     cout << "X: " << x;
-  //     cout << " Y: " << y << endl;
-  //   }
-  // }
   rclcpp::shutdown();
-  // cout << "Done!" << endl;
+  cout << "Done!" << endl;
   return 0;
 }

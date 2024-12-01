@@ -148,22 +148,60 @@ bool RRT::valid_point(KDNode_t &sampled_point, polygon_t &map)
   return boost::geometry::within(aux_point, map);
 }
 
-// TODO: FIX THIS CODE !!!!
 bool RRT::valid_segment(KDNode_t &start, KDNode_t &end, polygon_t &map)
 {
   // check if a segment with start and end points whole within the polygon map
+  // will approximate the segment with a polygon so the function within can be used
 
   point_t start_point = point_t(start.at(0), start.at(1));
   point_t end_point = point_t(end.at(0), end.at(1));
-  std::cout << "VALID SEGMENT" << std::endl;
-  // std::cout << start.at(0) << " " << start.at(1) << std::endl;
-  // std::cout << end.at(0) << " " << end.at(1) << std::endl;
-  segment_t segment = segment_t(start_point, end_point);
-  if (!boost::geometry::intersects(segment, map))
+  polygon_t segment;
+  this->create_inflated_polygon(start_point, end_point, 0.001, segment);
+  if (boost::geometry::within(segment, map))
   {
     return true;
   }
-  return true;
+  return false;
+}
+
+void RRT::create_inflated_polygon(
+    const point_t &p1,
+    const point_t &p2,
+    double epsilon,
+    polygon_t &polygon)
+{
+  // Extract coordinates
+  double x1 = boost::geometry::get<0>(p1);
+  double y1 = boost::geometry::get<1>(p1);
+  double x2 = boost::geometry::get<0>(p2);
+  double y2 = boost::geometry::get<1>(p2);
+
+  // Compute the direction vector (dx, dy)
+  double dx = x2 - x1;
+  double dy = y2 - y1;
+
+  // Normalize the direction vector
+  double length = std::sqrt(dx * dx + dy * dy);
+  dx /= length;
+  dy /= length;
+
+  // Compute the perpendicular vector (px, py)
+  double px = -dy * epsilon; // Perpendicular and scaled by epsilon
+  double py = dx * epsilon;
+
+  // Compute the four corners of the rectangle
+  point_t corner1(x1 + px, y1 + py);
+  point_t corner2(x1 - px, y1 - py);
+  point_t corner3(x2 - px, y2 - py);
+  point_t corner4(x2 + px, y2 + py);
+
+  // Construct the polygon
+  polygon.outer().clear();
+  polygon.outer().push_back(corner1);
+  polygon.outer().push_back(corner2);
+  polygon.outer().push_back(corner3);
+  polygon.outer().push_back(corner4);
+  polygon.outer().push_back(corner1); // Close the polygon
 }
 
 void RRT::add_kd_node(KDNode_t &node)
