@@ -156,25 +156,23 @@ int main(int argc, char **argv)
 
   std::vector<std::vector<double>> points;
 
-  // start sampling nodes with rrt
-  auto point_0 = _rrt.get_random_point(1, map);
-  if (_rrt.add_node(point_0))
+  // set start and goal
+
+  KDNode_t start = {4,4};
+  KDNode_t goal = {-3,-3};
+
+  _rrt.set_problem(start, goal);
+  for (uint i = 1; i < 1500; i++)
   {
-    cout << "Added first node " << point_0.at(0) << point_0.at(1) << " , starting RRT..." << endl;
-  }
-  for (uint i = 2; i < 1500; i++)
-  {
-    std::cout << "----------------" << std::endl;
     auto point = _rrt.get_random_point(i, map);
-    std::cout << point.at(0) << " " << point.at(1) << std::endl;
     auto nearest = _rrt.get_nn(point, 1);
-    std::cout << nearest.at(0) << " " << nearest.at(1) << std::endl;
     auto new_point = _rrt.next_point(point, nearest, map);
-    std::cout << new_point.at(0) << " " << new_point.at(1) << std::endl;
     if (_rrt.add_edge(new_point, nearest, map))
     {
-      cout << "Added new node" << endl;
       points.push_back(new_point);
+    }
+    if (_rrt.is_goal(new_point)){
+      break;
     }
   }
 

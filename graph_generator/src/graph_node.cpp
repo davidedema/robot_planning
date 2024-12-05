@@ -26,7 +26,6 @@ void GraphGenerator::callback_borders(const geometry_msgs::msg::Polygon::SharedP
 {
   if (!msg->points.empty())
   {
-    RCLCPP_INFO(this->get_logger(), "entered1");
     this->set_borders(*msg);
     borders_r_ = true;
   }
@@ -40,7 +39,6 @@ void GraphGenerator::callback_obstacles(const obstacles_msgs::msg::ObstacleArray
 {
   if (!msg->obstacles.empty())
   {
-    RCLCPP_INFO(this->get_logger(), "entered2");
     this->set_obstacles(*msg);
     obstacles_r_ = true;
   }
@@ -54,7 +52,6 @@ void GraphGenerator::callback_gates(const geometry_msgs::msg::PoseArray::SharedP
 {
   if (!msg->poses.empty())
   {
-    RCLCPP_INFO(this->get_logger(), "entered3");
     gates_r_ = true;
     this->set_gate(*msg);
   }
@@ -72,8 +69,31 @@ void GraphGenerator::set_obstacles(const obstacles_msgs::msg::ObstacleArrayMsg &
   for (const auto &obstacle : msg.obstacles)
   {
     if (obstacle.radius)
-    { // the obstacle is a circle
-      std::cout << "CERCHIO \n";
+    {
+
+      // declare all buffer strategies
+      int points_per_circle(10);
+      boost::geometry::strategy::buffer::join_round join_strategy(points_per_circle);
+      boost::geometry::strategy::buffer::end_flat end_strategy;
+      boost::geometry::strategy::buffer::point_circle circle_strategy(points_per_circle);
+      boost::geometry::strategy::buffer::side_straight side_strategy;
+
+      // set the distance strategy
+      double radius = obstacle.radius;
+      boost::geometry::strategy::buffer::distance_symmetric<double> distance_strategy(radius);
+
+      point_t center = point_t(obstacle.polygon.points[0].x, obstacle.polygon.points[0].y);
+      boost::geometry::model::multi_polygon<polygon_t> tmp; // buffer generates multipolygons
+      polygon_t disk;
+
+      // make disk centered on `center` and of correct `radius`
+      boost::geometry::buffer(center, tmp, distance_strategy, side_strategy,
+                              join_strategy, end_strategy, circle_strategy);
+
+      // convert the MultiPolygon output to a simple polygon
+      disk = polygon_t(tmp[0]);
+
+      obstacle_arr.push_back(disk);
     }
     else
     { // the obstacle is a polygon

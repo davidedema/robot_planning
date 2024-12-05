@@ -39,10 +39,7 @@ KDNode_t RRT::get_random_point(int index, polygon_t &map)
     }
     else
     {
-      std::cout << sampled_point.at(0) << " " << sampled_point.at(1) << std::endl;
       sampled_point.clear();
-      std::cout
-          << "Sample not valid!\n";
       sampled_point.push_back(-1000);
       sampled_point.push_back(-1000);
       return sampled_point;
@@ -78,7 +75,6 @@ KDNode_t RRT::next_point(KDNode_t &sampled_point, KDNode_t &nearest, polygon_t &
   {
     return new_point;
   }
-  std::cout << "Point not valid" << std::endl;
   return {-1000, -1000};
 }
 
@@ -129,7 +125,6 @@ bool RRT::add_edge(KDNode_t &new_node, KDNode_t &nearest_node, polygon_t &map)
     this->add_kd_node(new_node);
     return true;
   }
-  std::cout << "Unfeasable path" << std::endl;
   return false;
 }
 bool RRT::add_node(KDNode_t &new_node)
@@ -217,4 +212,22 @@ KDNode_t RRT::get_nn(KDNode_t &sampled_point, int n_k)
   // TODO: molto hardcoded questa parte
   KDNode_t ret{result[0].point[0], result[0].point[1]};
   return ret;
+}
+
+bool RRT::is_goal(KDNode_t &point)
+{
+  constexpr double goal_radius = 0.5;
+  double dx = point.at(0) - goal.at(0);
+  double dy = point.at(1) - goal.at(1);
+
+  double distance = sqrt(dx * dx + dy * dy);
+
+  return distance <= goal_radius;
+}
+
+void RRT::set_problem(KDNode_t &start, KDNode_t &goal)
+{
+  this->start = start;
+  this->add_node(start);
+  this->goal = goal;
 }

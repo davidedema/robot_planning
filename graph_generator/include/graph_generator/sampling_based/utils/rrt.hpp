@@ -32,6 +32,8 @@ private:
   uint samples = 100;
   double d_max = 0.5;
   double d = 0.25;
+  KDNode_t start;
+  KDNode_t goal;
   Graph g;
 
 public:
@@ -46,6 +48,7 @@ public:
   ~RRT();
 
   // main functions
+  void set_problem(KDNode_t &start, KDNode_t &goal);
   KDNode_t get_random_point(int index, polygon_t &map);
   KDNode_t next_point(KDNode_t &sampled_point, KDNode_t &nearest, polygon_t &map);
   KDNode_t get_parent(KDNode_t &child);
@@ -57,5 +60,6 @@ public:
   bool add_node(KDNode_t &new_node);
   bool valid_point(KDNode_t &result, polygon_t &map);
   bool valid_segment(KDNode_t &start, KDNode_t &end, polygon_t &map);
+  bool is_goal(KDNode_t &point);
   void create_inflated_polygon(const point_t &p1, const point_t &p2, double epsilon, polygon_t &polygon);
 };
