@@ -160,9 +160,10 @@ int main(int argc, char **argv)
 
   KDNode_t start = {4,4};
   KDNode_t goal = {-3,-3};
+  vector<KDNode_t> path;
 
   _rrt.set_problem(start, goal);
-  for (uint i = 1; i < 1500; i++)
+  for (uint i = 1; i < 300; i++)
   {
     auto point = _rrt.get_random_point(i, map);
     auto nearest = _rrt.get_nn(point, 1);
@@ -172,16 +173,23 @@ int main(int argc, char **argv)
       points.push_back(new_point);
     }
     if (_rrt.is_goal(new_point)){
+      path = _rrt.get_path(new_point);
       break;
     }
+  } 
+
+  for (const auto p : path)
+  {
+    cout << p.at(0) << "  " << p.at(1) << endl;
   }
 
 
-  // Pass points to the node
-  node->setPoints(points);
 
-  // Keep the node alive
-  rclcpp::spin(node);
+  // Pass points to the node
+  // node->setPoints(points);
+
+  // // Keep the node alive
+  // rclcpp::spin(node);
 
   rclcpp::shutdown();
   cout << "Done!" << endl;

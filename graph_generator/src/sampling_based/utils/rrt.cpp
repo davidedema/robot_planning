@@ -83,18 +83,6 @@ KDNode_t RRT::get_parent(KDNode_t &child)
   return {0.0};
 }
 
-// Graph::vertex_descriptor RRT::find_vertex_by_node(const Graph &g, const KDNode_t &node)
-// {
-//   for (const auto &v : boost::make_iterator_range(boost::vertices(g)))
-//   {
-//     if (are_nodes_equal(g[v], node))
-//     { // Use the node comparison function
-//       return v;
-//     }
-//   }
-//   throw std::runtime_error("Parent node not found in the graph");
-// }
-
 bool RRT::are_nodes_equal(const KDNode_t &a, const KDNode_t &b)
 {
   // Check if sizes are equal
@@ -121,9 +109,20 @@ bool RRT::add_edge(KDNode_t &new_node, KDNode_t &nearest_node, polygon_t &map)
     auto v_new = boost::add_vertex(g);
     g[v_new].node = new_node;
     g[v_new].parents.push_back(nearest_node);
-    g[v_new].cost = 0.0;      // TODO
     this->graph_lookup[new_node] = v_new;
     auto v_parent = this->graph_lookup[nearest_node];
+    double distance = sqrt(pow(new_node.at(0) - nearest_node.at(0), 2) + pow(new_node.at(1) - nearest_node.at(1), 2));
+    g[v_new].cost = g[v_parent].cost + distance;
+
+    // std::cout << "NODE" << std::endl;
+    // std::cout << g[v_new].node.at(0)<< "-" << g[v_new].node.at(1) << std::endl;
+    // std::cout << "PARENT" << std::endl;
+    // std::cout << g[v_new].parents.at(0).at(0)<< "-" << g[v_new].parents.at(0).at(1) << std::endl;
+    // std::cout << "COST" << std::endl;
+    // std::cout << g[v_new].cost << std::endl;
+    // std::cout << "DISTANCE" << std::endl;
+    // std::cout << distance << std::endl;
+
     boost::add_edge(v_parent, v_new, g);
     //  update the graph and KDTree
     this->add_kd_node(new_node);
@@ -237,4 +236,39 @@ void RRT::set_problem(KDNode_t &start, KDNode_t &goal)
   this->start = start;
   this->add_node(start);
   this->goal = goal;
+}
+
+std::vector<KDNode_t> RRT::get_path(KDNode_t &start)
+{
+  std::vector<KDNode_t> path;
+  KDNode_t parent;
+  KDNode_t current = start;
+  bool done = false;
+
+
+  while (!done)
+  {
+    parent = g[this->graph_lookup[current]].parents.at(0);
+    path.insert(path.begin(), current);
+    if (current == this->start)
+    {
+      done = true;
+    }
+    current = parent;
+  }
+  return path;
+}
+
+//----------- RRT* METHODS -----------//
+KDNode_t RRT::get_best_neighbor(KDNode_t &new_point)
+{
+  // 1) find K range nns
+  // 2) wire with the one that produces less cost rather then the nearest
+}
+
+bool RRT::rewire(KDNode_t &new_point)
+{
+  // 1) find K range nns
+  // 2) If cost from new node to the node is less than the actual cost => rewire
+  // REWIRE -> cancel old edge and create new one
 }
