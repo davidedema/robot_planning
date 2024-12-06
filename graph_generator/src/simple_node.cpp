@@ -9,134 +9,161 @@
 #include "graph_generator/sampling_based/utils/rrt.hpp"
 #include "graph_generator/sampling_based/utils/kdtree.hpp"
 
-using namespace std;
-
 #include <rclcpp/rclcpp.hpp>
 #include <visualization_msgs/msg/marker.hpp>
 #include <geometry_msgs/msg/point.hpp>
 #include <vector>
 
+using namespace std;
+
 class PointMarkerNode : public rclcpp::Node
 {
 public:
   PointMarkerNode()
-      : Node("point_marker_node"),
-        timer_interval_ms_(500)
-  { // Check for subscribers every 500 ms
-    marker_pub_ = this->create_publisher<visualization_msgs::msg::Marker>(
-        "visualization_marker", rclcpp::QoS(10));
+      : Node("point_marker_node"), timer_interval_ms_(500)
+  {
+    // Publisher for sampled points
+    sampled_points_pub_ = this->create_publisher<visualization_msgs::msg::Marker>(
+        "sampled_points_marker", rclcpp::QoS(10));
 
+    // Publisher for the path
+    path_pub_ = this->create_publisher<visualization_msgs::msg::Marker>(
+        "path_marker", rclcpp::QoS(10));
+
+    // Timer to periodically check for subscribers and publish
     timer_ = this->create_wall_timer(
         std::chrono::milliseconds(timer_interval_ms_),
-        std::bind(&PointMarkerNode::checkAndPublishMarker, this));
+        std::bind(&PointMarkerNode::checkAndPublishMarkers, this));
 
     RCLCPP_INFO(this->get_logger(), "Point Marker Node started");
   }
 
-  void setPoints(const std::vector<std::vector<double>> &points)
+  void setSampledPoints(const std::vector<std::vector<double>> &sampled_points)
   {
-    std::vector<double> flat_points;
+    sampled_points_ = sampled_points;
+  }
 
-    // Flatten the points
-    for (const auto &point : points)
-    {
-      if (point.size() == 2)
-      {                                  // Ensure valid 2D point
-        flat_points.push_back(point[0]); // x
-        flat_points.push_back(point[1]); // y
-      }
-      else
-      {
-        RCLCPP_WARN(this->get_logger(), "Skipping invalid point with size %zu", point.size());
-      }
-    }
-
-    // Use the flattened points
-    points_ = flat_points;
+  void setPathPoints(const std::vector<std::vector<double>> &path_points)
+  {
+    path_points_ = path_points;
   }
 
 private:
-  void checkAndPublishMarker()
+  void checkAndPublishMarkers()
   {
-    if (marker_pub_->get_subscription_count() > 0)
+    if (sampled_points_pub_->get_subscription_count() > 0 ||
+        path_pub_->get_subscription_count() > 0)
     {
-      RCLCPP_INFO_ONCE(this->get_logger(),
-                       "Subscriber detected. Publishing marker.");
-      publishMarker();
+      RCLCPP_INFO_ONCE(this->get_logger(), "Subscriber detected. Publishing markers.");
+      publishMarkers();
     }
   }
 
-  void publishMarker()
+  void publishMarkers()
   {
-    if (points_.empty())
+    publishSampledPointsMarker();
+    publishPathMarker();
+  }
+
+  void publishSampledPointsMarker()
+  {
+    if (sampled_points_.empty())
     {
-      RCLCPP_WARN(this->get_logger(), "No points to publish.");
+      RCLCPP_WARN(this->get_logger(), "No sampled points to publish.");
       return;
     }
 
     visualization_msgs::msg::Marker marker;
     marker.header.frame_id = "map"; // Adjust frame_id as needed
     marker.header.stamp = this->now();
-    marker.ns = "points";
-    marker.id = 0;
-    marker.type = visualization_msgs::msg::Marker::SPHERE_LIST;
+    marker.ns = "sampled_points";
+    marker.id = 1;
+    marker.type = visualization_msgs::msg::Marker::SPHERE_LIST; // Individual points
     marker.action = visualization_msgs::msg::Marker::ADD;
 
     // Define marker properties
-    marker.scale.x = 0.1; // Sphere size
-    marker.scale.y = 0.1;
-    marker.scale.z = 0.1;
+    marker.scale.x = 0.05; // Point size
+    marker.scale.y = 0.05;
+    marker.scale.z = 0.05;
     marker.color.r = 0.0;
     marker.color.g = 0.0;
-    marker.color.b = 1.0;
+    marker.color.b = 1.0; // Blue color
     marker.color.a = 1.0;
 
     // Fill marker points
-    for (size_t i = 0; i < points_.size(); i += 2)
+    for (const auto &point : sampled_points_)
     {
-      geometry_msgs::msg::Point point;
-      point.x = points_[i];
-      point.y = points_[i + 1];
-      point.z = 0.0; // z is set to 0 for 2D points
-      marker.points.push_back(point);
+      if (point.size() == 2)
+      {
+        geometry_msgs::msg::Point p;
+        p.x = point[0];
+        p.y = point[1];
+        p.z = 0.0;
+        marker.points.push_back(p);
+      }
     }
 
     // Publish the marker
-    marker_pub_->publish(marker);
-    RCLCPP_INFO(this->get_logger(), "Published marker with %zu points",
-                marker.points.size());
+    sampled_points_pub_->publish(marker);
+    RCLCPP_INFO(this->get_logger(), "Published %zu sampled points.", marker.points.size());
   }
 
-  std::vector<double> points_;
-  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr marker_pub_;
+  void publishPathMarker()
+  {
+    if (path_points_.empty())
+    {
+      RCLCPP_WARN(this->get_logger(), "No path points to publish.");
+      return;
+    }
+
+    visualization_msgs::msg::Marker marker;
+    marker.header.frame_id = "map"; // Adjust frame_id as needed
+    marker.header.stamp = this->now();
+    marker.ns = "path";
+    marker.id = 2;
+    marker.type = visualization_msgs::msg::Marker::LINE_STRIP; // Connected path
+    marker.action = visualization_msgs::msg::Marker::ADD;
+
+    // Define marker properties
+    marker.scale.x = 0.05; // Path width
+    marker.color.r = 1.0;  // Red color
+    marker.color.g = 0.0;
+    marker.color.b = 0.0;
+    marker.color.a = 1.0;
+
+    // Fill marker points
+    for (const auto &point : path_points_)
+    {
+      if (point.size() == 2)
+      {
+        geometry_msgs::msg::Point p;
+        p.x = point[0];
+        p.y = point[1];
+        p.z = 0.0;
+        marker.points.push_back(p);
+      }
+    }
+
+    // Publish the marker
+    path_pub_->publish(marker);
+    RCLCPP_INFO(this->get_logger(), "Published path with %zu points.", marker.points.size());
+  }
+
+  std::vector<std::vector<double>> sampled_points_;
+  std::vector<std::vector<double>> path_points_;
+  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr sampled_points_pub_;
+  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr path_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
   int timer_interval_ms_;
 };
 
-void print_nodes(const Kdtree::KdNodeVector &nodes)
-{
-  size_t i, j;
-  for (i = 0; i < nodes.size(); ++i)
-  {
-    if (i > 0)
-      cout << " ";
-    cout << "(";
-    for (j = 0; j < nodes[i].point.size(); j++)
-    {
-      if (j > 0)
-        cout << ",";
-      cout << nodes[i].point[j];
-    }
-    cout << ")";
-  }
-  cout << endl;
-}
-
 int main(int argc, char **argv)
 {
   rclcpp::init(argc, argv);
+
   // Create the node
   auto node = std::make_shared<PointMarkerNode>();
+
   // Monitor execution time
   auto m = std::make_shared<GraphGenerator>();
 
@@ -149,47 +176,54 @@ int main(int argc, char **argv)
   RCLCPP_INFO(m->get_logger(), "\033[1;32m Map info obtained\033[0m");
   RCLCPP_INFO(m->get_logger(), "Building map");
   auto map = m->get_map();
-  RCLCPP_INFO(m->get_logger(), "\033[1;32m Map builded\033[0m");
+  RCLCPP_INFO(m->get_logger(), "\033[1;32m Map built\033[0m");
   RCLCPP_INFO(m->get_logger(), "Sampling test");
 
   RRT _rrt;
 
-  std::vector<std::vector<double>> points;
+  std::vector<std::vector<double>> sampled_points;
+  std::vector<std::vector<double>> path_points;
 
-  // set start and goal
-
-  KDNode_t start = {4,4};
-  KDNode_t goal = {-3,-3};
+  // Set start and goal
+  KDNode_t start = {5, 5};
+  KDNode_t goal = {-7, -3};
   vector<KDNode_t> path;
 
   _rrt.set_problem(start, goal);
-  for (uint i = 1; i < 300; i++)
+  for (uint i = 1; i < 3000; i++)
   {
     auto point = _rrt.get_random_point(i, map);
     auto nearest = _rrt.get_nn(point, 1);
     auto new_point = _rrt.next_point(point, nearest, map);
     if (_rrt.add_edge(new_point, nearest, map))
     {
-      points.push_back(new_point);
+      sampled_points.push_back(new_point);
     }
-    if (_rrt.is_goal(new_point)){
+    if (_rrt.is_goal(new_point))
+    {
       path = _rrt.get_path(new_point);
       break;
     }
-  } 
+  }
 
-  for (const auto p : path)
+  // Convert path to 2D points
+  for (const auto &p : path)
+  {
+    path_points.push_back({p.at(0), p.at(1)});
+  }
+
+  // Set points in the node
+  node->setSampledPoints(sampled_points);
+  node->setPathPoints(path_points);
+
+  // Output path
+  for (const auto &p : path)
   {
     cout << p.at(0) << "  " << p.at(1) << endl;
   }
 
-
-
-  // Pass points to the node
-  // node->setPoints(points);
-
-  // // Keep the node alive
-  // rclcpp::spin(node);
+  // Keep the node alive
+  rclcpp::spin(node);
 
   rclcpp::shutdown();
   cout << "Done!" << endl;
