@@ -246,11 +246,11 @@ std::vector<KDNode_t> RRT::get_path(KDNode_t &start)
 
 //----------- RRT* METHODS -----------//
 
-KDNode_t RRT::get_best_neighbor(KDNode_t &new_point, double range)
+KDNode_t RRT::get_best_neighbor(KDNode_t &new_point, KDNode_t &old_neigh, double range)
 {
   double current_cost, distance, best_cost;
-  best_cost = INFINITY;
-  KDNode_t best;
+  best_cost = 999;
+  KDNode_t best = old_neigh;
   // 1) find K range nns
   Kdtree::KdTree tree(&nodes);
   Kdtree::KdNodeVector result;
@@ -292,6 +292,8 @@ void RRT::rewire(KDNode_t &new_point, double range)
       auto parent = g[index].parents.at(0);
       auto parent_id = graph_lookup[parent];
       boost::remove_edge(parent_id, index, g);
+      g[index].parents.clear();
+      g[index].parents.push_back(new_point);
       boost::add_edge(node_index, index, g);
     }
   }

@@ -186,7 +186,7 @@ int main(int argc, char **argv)
 
   // Set start and goal
   KDNode_t start = {5, 5};
-  KDNode_t goal = {-7, -3};
+  KDNode_t goal = {-7, 7};
   vector<KDNode_t> path;
 
   _rrt.set_problem(start, goal);
@@ -195,10 +195,12 @@ int main(int argc, char **argv)
     auto point = _rrt.get_random_point(i, map);
     auto nearest = _rrt.get_nn(point, 1);
     auto new_point = _rrt.next_point(point, nearest, map);
-    if (_rrt.add_edge(new_point, nearest, map))
+    auto best_one = _rrt.get_best_neighbor(new_point, nearest, 1);
+    if (_rrt.add_edge(new_point, best_one, map))
     {
       sampled_points.push_back(new_point);
     }
+    _rrt.rewire(new_point, 1);
     if (_rrt.is_goal(new_point))
     {
       path = _rrt.get_path(new_point);
