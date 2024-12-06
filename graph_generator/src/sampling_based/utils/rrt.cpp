@@ -78,11 +78,6 @@ KDNode_t RRT::next_point(KDNode_t &sampled_point, KDNode_t &nearest, polygon_t &
   return {-1000, -1000};
 }
 
-KDNode_t RRT::get_parent(KDNode_t &child)
-{
-  return {0.0};
-}
-
 bool RRT::are_nodes_equal(const KDNode_t &a, const KDNode_t &b)
 {
   // Check if sizes are equal
@@ -113,15 +108,6 @@ bool RRT::add_edge(KDNode_t &new_node, KDNode_t &nearest_node, polygon_t &map)
     auto v_parent = this->graph_lookup[nearest_node];
     double distance = sqrt(pow(new_node.at(0) - nearest_node.at(0), 2) + pow(new_node.at(1) - nearest_node.at(1), 2));
     g[v_new].cost = g[v_parent].cost + distance;
-
-    // std::cout << "NODE" << std::endl;
-    // std::cout << g[v_new].node.at(0)<< "-" << g[v_new].node.at(1) << std::endl;
-    // std::cout << "PARENT" << std::endl;
-    // std::cout << g[v_new].parents.at(0).at(0)<< "-" << g[v_new].parents.at(0).at(1) << std::endl;
-    // std::cout << "COST" << std::endl;
-    // std::cout << g[v_new].cost << std::endl;
-    // std::cout << "DISTANCE" << std::endl;
-    // std::cout << distance << std::endl;
 
     boost::add_edge(v_parent, v_new, g);
     //  update the graph and KDTree
@@ -245,7 +231,6 @@ std::vector<KDNode_t> RRT::get_path(KDNode_t &start)
   KDNode_t current = start;
   bool done = false;
 
-
   while (!done)
   {
     parent = g[this->graph_lookup[current]].parents.at(0);
@@ -260,15 +245,54 @@ std::vector<KDNode_t> RRT::get_path(KDNode_t &start)
 }
 
 //----------- RRT* METHODS -----------//
-KDNode_t RRT::get_best_neighbor(KDNode_t &new_point)
+
+KDNode_t RRT::get_best_neighbor(KDNode_t &new_point, double range)
 {
+  double current_cost, distance, best_cost;
+  best_cost = INFINITY;
+  KDNode_t best;
   // 1) find K range nns
+  Kdtree::KdTree tree(&nodes);
+  Kdtree::KdNodeVector result;
+  tree.range_nearest_neighbors(new_point, range, &result);
   // 2) wire with the one that produces less cost rather then the nearest
+  for (auto point : result)
+  {
+    distance = sqrt(pow(new_point.at(0) - point.point.at(0), 2) + pow(new_point.at(1) - point.point.at(1), 2));
+    auto index = graph_lookup[point.point];
+    current_cost = g[index].cost + distance;
+    if (current_cost < best_cost)
+    {
+      best = point.point;
+    }
+  }
+
+  return best;
 }
 
-bool RRT::rewire(KDNode_t &new_point)
+void RRT::rewire(KDNode_t &new_point, double range)
 {
+  auto node_index = graph_lookup[new_point];
+  double node_cost = g[node_index].cost;
+  double candidate_cost, current_cost, distance;
   // 1) find K range nns
+  Kdtree::KdTree tree(&nodes);
+  Kdtree::KdNodeVector result;
+  tree.range_nearest_neighbors(new_point, range, &result);
   // 2) If cost from new node to the node is less than the actual cost => rewire
-  // REWIRE -> cancel old edge and create new one
+  for (auto point : result)
+  {
+    distance = sqrt(pow(new_point.at(0) - point.point.at(0), 2) + pow(new_point.at(1) - point.point.at(1), 2));
+    auto index = graph_lookup[point.point];
+    current_cost = g[index].cost;
+    candidate_cost = node_cost + distance;
+    if (candidate_cost < current_cost)
+    {
+      // REWIRE -> cancel old edge and create new one
+      auto parent = g[index].parents.at(0);
+      auto parent_id = graph_lookup[parent];
+      boost::remove_edge(parent_id, index, g);
+      boost::add_edge(node_index, index, g);
+    }
+  }
 }
