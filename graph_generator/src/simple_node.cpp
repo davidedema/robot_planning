@@ -176,6 +176,7 @@ int main(int argc, char **argv)
     }
   }
 
+
   // Pass points to the node
   node->setPoints(points);
 

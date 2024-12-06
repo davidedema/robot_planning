@@ -83,17 +83,17 @@ KDNode_t RRT::get_parent(KDNode_t &child)
   return {0.0};
 }
 
-Graph::vertex_descriptor RRT::find_vertex_by_node(const Graph &g, const KDNode_t &node)
-{
-  for (const auto &v : boost::make_iterator_range(boost::vertices(g)))
-  {
-    if (are_nodes_equal(g[v], node))
-    { // Use the node comparison function
-      return v;
-    }
-  }
-  throw std::runtime_error("Parent node not found in the graph");
-}
+// Graph::vertex_descriptor RRT::find_vertex_by_node(const Graph &g, const KDNode_t &node)
+// {
+//   for (const auto &v : boost::make_iterator_range(boost::vertices(g)))
+//   {
+//     if (are_nodes_equal(g[v], node))
+//     { // Use the node comparison function
+//       return v;
+//     }
+//   }
+//   throw std::runtime_error("Parent node not found in the graph");
+// }
 
 bool RRT::are_nodes_equal(const KDNode_t &a, const KDNode_t &b)
 {
@@ -118,8 +118,12 @@ bool RRT::add_edge(KDNode_t &new_node, KDNode_t &nearest_node, polygon_t &map)
   //! if the path and the points are inside the polygon
   if (valid_segment(new_node, nearest_node, map))
   {
-    auto v_new = boost::add_vertex(new_node, g);
-    auto v_parent = find_vertex_by_node(g, nearest_node);
+    auto v_new = boost::add_vertex(g);
+    g[v_new].node = new_node;
+    g[v_new].parents.push_back(nearest_node);
+    g[v_new].cost = 0.0;      // TODO
+    this->graph_lookup[new_node] = v_new;
+    auto v_parent = this->graph_lookup[nearest_node];
     boost::add_edge(v_parent, v_new, g);
     //  update the graph and KDTree
     this->add_kd_node(new_node);
@@ -129,7 +133,10 @@ bool RRT::add_edge(KDNode_t &new_node, KDNode_t &nearest_node, polygon_t &map)
 }
 bool RRT::add_node(KDNode_t &new_node)
 {
-  auto v_new = boost::add_vertex(new_node, g);
+  auto v_new = boost::add_vertex(g);
+  g[v_new].node = new_node;
+  g[v_new].parents.push_back(new_node);
+  g[v_new].cost = 0.0;
   this->add_kd_node(new_node);
   return true;
 }
