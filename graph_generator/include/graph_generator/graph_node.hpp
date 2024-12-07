@@ -11,6 +11,8 @@
 #include "geometry_msgs/msg/pose_array.hpp"
 #include "geometry_msgs/msg/pose.hpp"
 
+#define SHELFINO_INFLATION 0.5
+
 typedef boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> point_t;
 typedef boost::geometry::model::polygon<point_t> polygon_t;
 typedef std::vector<double> pose_t;
@@ -48,6 +50,7 @@ public:
 
   // setter for map
   void set_obstacles(const obstacles_msgs::msg::ObstacleArrayMsg &msg);
+  void inflate_obstacles();
   void set_borders(const geometry_msgs::msg::Polygon &msg);
   void set_gate(const geometry_msgs::msg::PoseArray &msg);
 
@@ -62,6 +65,7 @@ public:
 private:
   // map values
   std::vector<polygon_t> obstacle_arr;
+  std::vector<boost::geometry::model::multi_polygon<polygon_t>> inflated_obstacles;
   polygon_t map_borders;
   pose_t gate;
   polygon_t map;

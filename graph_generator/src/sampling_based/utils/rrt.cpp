@@ -246,7 +246,7 @@ std::vector<KDNode_t> RRT::get_path(KDNode_t &start)
 
 //----------- RRT* METHODS -----------//
 
-KDNode_t RRT::get_best_neighbor(KDNode_t &new_point, KDNode_t &old_neigh, double range)
+KDNode_t RRT::get_best_neighbor(KDNode_t &new_point, KDNode_t &old_neigh, double range, polygon_t &map)
 {
   double current_cost, distance, best_cost;
   best_cost = 999;
@@ -261,7 +261,7 @@ KDNode_t RRT::get_best_neighbor(KDNode_t &new_point, KDNode_t &old_neigh, double
     distance = sqrt(pow(new_point.at(0) - point.point.at(0), 2) + pow(new_point.at(1) - point.point.at(1), 2));
     auto index = graph_lookup[point.point];
     current_cost = g[index].cost + distance;
-    if (current_cost < best_cost)
+    if (current_cost < best_cost && valid_segment(new_point, point.point, map))
     {
       best = point.point;
     }
@@ -270,7 +270,7 @@ KDNode_t RRT::get_best_neighbor(KDNode_t &new_point, KDNode_t &old_neigh, double
   return best;
 }
 
-void RRT::rewire(KDNode_t &new_point, double range)
+void RRT::rewire(KDNode_t &new_point, double range, polygon_t &map)
 {
   auto node_index = graph_lookup[new_point];
   double node_cost = g[node_index].cost;
@@ -286,7 +286,7 @@ void RRT::rewire(KDNode_t &new_point, double range)
     auto index = graph_lookup[point.point];
     current_cost = g[index].cost;
     candidate_cost = node_cost + distance;
-    if (candidate_cost < current_cost)
+    if (candidate_cost < current_cost && valid_segment(new_point, point.point, map))
     {
       // REWIRE -> cancel old edge and create new one
       auto parent = g[index].parents.at(0);

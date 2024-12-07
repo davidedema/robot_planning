@@ -195,19 +195,19 @@ int main(int argc, char **argv)
     auto point = _rrt.get_random_point(i, map);
     auto nearest = _rrt.get_nn(point, 1);
     auto new_point = _rrt.next_point(point, nearest, map);
-    auto best_one = _rrt.get_best_neighbor(new_point, nearest, 1);
+    auto best_one = _rrt.get_best_neighbor(new_point, nearest, 2, map);
     if (_rrt.add_edge(new_point, best_one, map))
     {
       sampled_points.push_back(new_point);
     }
-    _rrt.rewire(new_point, 1);
+    _rrt.rewire(new_point, 2, map);
     if (_rrt.is_goal(new_point))
     {
       path = _rrt.get_path(new_point);
-      break;
+      // break;
     }
   }
-
+  
   // Convert path to 2D points
   for (const auto &p : path)
   {
