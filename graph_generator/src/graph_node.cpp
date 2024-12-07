@@ -99,7 +99,7 @@ void GraphGenerator::set_obstacles(const obstacles_msgs::msg::ObstacleArrayMsg &
     { // the obstacle is a polygon
       for (const auto &point : obstacle.polygon.points)
       {
-        boost::geometry::append(aux_p.outer(), point_t(point.x, point.y));
+        aux_p.outer().insert(aux_p.outer().begin(), point_t(point.x, point.y));
       }
       obstacle_arr.push_back(aux_p);
       aux_p.clear();
@@ -111,14 +111,19 @@ void GraphGenerator::set_obstacles(const obstacles_msgs::msg::ObstacleArrayMsg &
 
 void GraphGenerator::inflate_obstacles()
 {
-  for (const auto &obstacle : obstacle_arr)
+  for (auto &obstacle : obstacle_arr)
   {
+    if (!boost::geometry::equals(obstacle.outer().front(), obstacle.outer().back()))
+    {
+      obstacle.outer().push_back(obstacle.outer().front());
+    }
+
     boost::geometry::model::multi_polygon<polygon_t> inflated_polygon;
     // Inflate the polygon using Boost's buffer algorithm
     boost::geometry::strategy::buffer::distance_symmetric<double> distance_strategy(SHELFINO_INFLATION);
-    boost::geometry::strategy::buffer::join_round join_strategy;         // Round joins
-    boost::geometry::strategy::buffer::end_round end_strategy;           // Round ends
-    boost::geometry::strategy::buffer::point_circle circle_strategy(64); // Circle approximation
+    boost::geometry::strategy::buffer::join_round join_strategy(36);     // Round joins
+    boost::geometry::strategy::buffer::end_round end_strategy(36);       // Round ends
+    boost::geometry::strategy::buffer::point_circle circle_strategy(36); // Circle approximation
     boost::geometry::strategy::buffer::side_straight side_strategy;      // Straight sides
 
     boost::geometry::buffer(obstacle, inflated_polygon,
@@ -223,7 +228,7 @@ polygon_t GraphGenerator::get_map()
 //     map.inners().resize(5);
 //     int i = 0;
 //     // iterate through all obstacles
-//     for (const auto &obstacle : inflated_obstacles)
+//     for (const auto &obstacle : obstacle_arr)
 //     {
 //       for (const auto &point : obstacle.outer())
 //       {
@@ -239,4 +244,3 @@ polygon_t GraphGenerator::get_map()
 //     return map;
 //   }
 // }
-

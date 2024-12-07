@@ -207,7 +207,7 @@ int main(int argc, char **argv)
       // break;
     }
   }
-  
+
   // Convert path to 2D points
   for (const auto &p : path)
   {
