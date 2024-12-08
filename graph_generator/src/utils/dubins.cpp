@@ -5,6 +5,13 @@ Dubins::Dubins(std::vector<double> start, std::vector<double> end, double Kmax)
   this->start = start;
   this->end = end;
   this->Kmax = Kmax;
+  function_vector = {
+      &Dubins::d_lsl,
+      &Dubins::d_rsr,
+      &Dubins::d_lsr,
+      &Dubins::d_rsl,
+      &Dubins::d_rlr,
+      &Dubins::d_lrl};
 }
 
 Dubins::~Dubins() {}
@@ -157,4 +164,80 @@ std::vector<double> Dubins::d_lrl(double sc_th0, double sc_thf, double sc_kmax)
   double sc_s1 = radious * this->mod2pi(temp1 - sc_th0 + 0.5 * sc_s2 * sc_kmax);
   double sc_s3 = radious * this->mod2pi(sc_thf - sc_th0 + sc_kmax * (sc_s2 - sc_s1));
   return {sc_s1, sc_s2, sc_s3};
+}
+
+std::vector<double> Dubins::call_function(int index, double sc_th0, double sc_thf, double sc_kmax)
+{
+  return (this->*function_vector[index])(sc_th0, sc_thf, sc_kmax);
+}
+
+struct dubins_curve Dubins::build_dubins(double x0, double y0, double th0, double s1, double s2, double s3, double k1, double k2, double k3)
+{
+  struct dubins_arc a1 = this->build_dubins_arc(x0, y0, th0, k1, s1);
+  struct dubins_arc a2 = this->build_dubins_arc(a1.xf, a1.yf, a1.thf, k2, s2);
+  struct dubins_arc a3 = this->build_dubins_arc(a2.xf, a2.yf, a2.thf, k3, s3);
+
+  struct dubins_curve result =
+      {
+          .a1 = a1,
+          .a2 = a2,
+          .a3 = a3,
+          .L = a1.L + a2.L + a3.L};
+  return result;
+}
+
+struct dubins_arc Dubins::build_dubins_arc(double x0, double y0, double th0, double k, double L)
+{
+  std::vector<double> end = this->circline(L, x0, y0, th0, k);
+
+  struct dubins_arc result =
+      {
+          .x0 = x0,
+          .y0 = y0,
+          .th0 = th0,
+          .L = L,
+          .k = k,
+          .xf = end.at(0),
+          .yf = end.at(1),
+          .thf = end.at(2)};
+  return result;
+}
+
+std::vector<double> Dubins::circline(double L, double x0, double y0, double th0, double k)
+{
+  double x, y, th;
+  x = x0 + L * this->sinc(k * L / 2) * cos(th0 + L * k / 2);
+  y = y0 + L * this->sinc(k * L / 2) * cos(th0 + L * k / 2);
+  th = this->mod2pi(th0 + L * k);
+
+  return {x, y, th};
+}
+
+struct dubins_curve Dubins::dubins_shortest_path(double x0, double y0, double th0, double xf, double yf, double thf, double kmax)
+{
+  std::vector<double> scaled_quantities = this->scale_to_standard(x0, y0, th0, xf, yf, thf, kmax);
+  int pidx = -1;
+  std::vector<double> result;
+
+  std::vector<int> ksign = {1, 0, 1, -1, 0, -1, 1, 0, -1, -1, 0, 1 - 1, 1, -1, 1, -1, 1};
+
+  struct dubins_curve result;
+
+  for (int i = 0; i < 6; i++)
+  {
+    result = this->call_function(i, scaled_quantities.at(0), scaled_quantities.at(1), scaled_quantities.at(2));
+    if (!(result.at(1) == 0 && result.at(2) == 0 result.at(3) == 0))
+    {
+      pidx = i;
+    }
+  }
+
+  if (pidx >= 0)
+  {
+    std::vector<double> s = this->scale_from_standard(scaled_quantities.at(3), result.at(1), result.at(2), result.at(3));
+
+    result = this->build_dubins(x0, y0, th0, s.at(0), s.at(1), s.at(2), ksign.at(3 * pidx) * kmax, ksign.at(3 * pidx + 1) * kmax, ksign.at(3 * pidx + 2) * kmax);
+  }
+
+  return result;
 }
