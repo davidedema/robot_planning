@@ -60,15 +60,16 @@ public:
   pose_t get_gate();
 
   // get the map (polygon with holes replacing the obstacles)
-  polygon_t get_map();
+  boost::geometry::model::multi_polygon<polygon_t> get_map();
 
 private:
   // map values
   std::vector<polygon_t> obstacle_arr;
   std::vector<boost::geometry::model::multi_polygon<polygon_t>> inflated_obstacles;
   polygon_t map_borders;
+  boost::geometry::model::multi_polygon<polygon_t> inflated_borders;
   pose_t gate;
-  polygon_t map;
+  boost::geometry::model::multi_polygon<polygon_t> map;
 
   // subscriber
   rclcpp::Subscription<geometry_msgs::msg::Polygon>::SharedPtr subsctiption_borders_;

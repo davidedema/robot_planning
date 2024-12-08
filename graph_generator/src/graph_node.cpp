@@ -147,8 +147,24 @@ void GraphGenerator::set_borders(const geometry_msgs::msg::Polygon &msg)
 {
   for (auto const &point : msg.points)
   {
-    boost::geometry::append(this->map_borders.outer(), point_t(point.x, point.y));
+    this->map_borders.outer().insert(this->map_borders.outer().begin(), point_t(point.x, point.y));
   }
+
+  map_borders.outer().push_back(map_borders.outer().front());
+
+  // Inflate the polygon using Boost's buffer algorithm
+  boost::geometry::strategy::buffer::distance_symmetric<double> distance_strategy(-SHELFINO_INFLATION);
+  boost::geometry::strategy::buffer::join_round join_strategy(36);     // Round joins
+  boost::geometry::strategy::buffer::end_round end_strategy(36);       // Round ends
+  boost::geometry::strategy::buffer::point_circle circle_strategy(36); // Circle approximation
+  boost::geometry::strategy::buffer::side_straight side_strategy;      // Straight sides
+
+  boost::geometry::buffer(map_borders, inflated_borders,
+                          distance_strategy,
+                          side_strategy,
+                          join_strategy,
+                          end_strategy,
+                          circle_strategy);
 }
 
 polygon_t GraphGenerator::get_borders()
@@ -174,16 +190,23 @@ pose_t GraphGenerator::get_gate()
   return gate;
 }
 
-polygon_t GraphGenerator::get_map()
+boost::geometry::model::multi_polygon<polygon_t> GraphGenerator::get_map()
 {
   if (!is_map_created)
   {
-    // Copy the exterior ring of map_borders into map.outer()
-    for (auto it = boost::begin(boost::geometry::exterior_ring(map_borders));
-         it != boost::end(boost::geometry::exterior_ring(map_borders));
-         ++it)
+    // Copy the outer borders from inflated_borders into map
+    for (const auto &polygon : inflated_borders)
     {
-      boost::geometry::append(map.outer(), *it);
+      polygon_t new_polygon;
+
+      // Copy the exterior ring of each polygon in inflated_borders to a new polygon
+      for (const auto &point : boost::geometry::exterior_ring(polygon))
+      {
+        boost::geometry::append(new_polygon.outer(), point);
+      }
+
+      // Add the newly created polygon to the map
+      map.push_back(new_polygon);
     }
 
     // Resize the inner rings to accommodate all polygons in inflated_obstacles
@@ -192,7 +215,7 @@ polygon_t GraphGenerator::get_map()
     {
       total_inner_rings += boost::geometry::num_geometries(multi_polygon); // Count polygons in each multi-polygon
     }
-    map.inners().resize(total_inner_rings);
+    map[0].inners().resize(total_inner_rings);
 
     // Populate the inner rings with the obstacles
     size_t i = 0; // Index for the inner rings
@@ -202,7 +225,7 @@ polygon_t GraphGenerator::get_map()
       {
         for (const auto &point : polygon.outer())
         {
-          boost::geometry::append(map.inners()[i], point);
+          boost::geometry::append(map[0].inners()[i], point);
         }
         i++; // Move to the next inner ring
       }
@@ -216,31 +239,3 @@ polygon_t GraphGenerator::get_map()
     return map;
   }
 }
-
-// polygon_t GraphGenerator::get_map()
-// {
-//   if (!is_map_created)
-//   {
-//     for (auto it = boost::begin(boost::geometry::exterior_ring(map_borders)); it != boost::end(boost::geometry::exterior_ring(map_borders)); ++it)
-//     {
-//       boost::geometry::append(map.outer(), *it);
-//     }
-//     map.inners().resize(5);
-//     int i = 0;
-//     // iterate through all obstacles
-//     for (const auto &obstacle : obstacle_arr)
-//     {
-//       for (const auto &point : obstacle.outer())
-//       {
-//         boost::geometry::append(map.inners()[i], point);
-//       }
-//       i++;
-//     }
-//     is_map_created = true;
-//     return map;
-//   }
-//   else
-//   {
-//     return map;
-//   }
-// }

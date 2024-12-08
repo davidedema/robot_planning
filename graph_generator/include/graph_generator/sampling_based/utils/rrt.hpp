@@ -59,17 +59,17 @@ public:
 
   // main functions
   void set_problem(KDNode_t &start, KDNode_t &goal);
-  KDNode_t get_random_point(int index, polygon_t &map);
-  KDNode_t next_point(KDNode_t &sampled_point, KDNode_t &nearest, polygon_t &map);
-  KDNode_t get_best_neighbor(KDNode_t &new_point, KDNode_t &old_neigh, double range, polygon_t &map);
-  void rewire(KDNode_t &new_point, double range, polygon_t &map);
+  KDNode_t get_random_point(int index, boost::geometry::model::multi_polygon<polygon_t> &map);
+  KDNode_t next_point(KDNode_t &sampled_point, KDNode_t &nearest, boost::geometry::model::multi_polygon<polygon_t> &map);
+  KDNode_t get_best_neighbor(KDNode_t &new_point, KDNode_t &old_neigh, double range, boost::geometry::model::multi_polygon<polygon_t> &map);
+  void rewire(KDNode_t &new_point, double range, boost::geometry::model::multi_polygon<polygon_t> &map);
   KDNode_t get_nn(KDNode_t &sampled_point, int n_k = 1);
   void add_kd_node(KDNode_t &node);
   bool are_nodes_equal(const KDNode_t &a, const KDNode_t &b);
-  bool add_edge(KDNode_t &new_node, KDNode_t &nearest_node, polygon_t &map);
+  bool add_edge(KDNode_t &new_node, KDNode_t &nearest_node, boost::geometry::model::multi_polygon<polygon_t> &map);
   bool add_node(KDNode_t &new_node);
-  bool valid_point(KDNode_t &result, polygon_t &map);
-  bool valid_segment(KDNode_t &start, KDNode_t &end, polygon_t &map);
+  bool valid_point(KDNode_t &result, boost::geometry::model::multi_polygon<polygon_t> &map);
+  bool valid_segment(KDNode_t &start, KDNode_t &end, boost::geometry::model::multi_polygon<polygon_t> &map);
   bool is_goal(KDNode_t &point);
   void create_inflated_polygon(const point_t &p1, const point_t &p2, double epsilon, polygon_t &polygon);
   std::vector<KDNode_t> get_path(KDNode_t &start);

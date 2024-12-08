@@ -7,7 +7,7 @@ RRT::RRT()
 
 RRT::~RRT() {}
 
-KDNode_t RRT::get_random_point(int index, polygon_t &map)
+KDNode_t RRT::get_random_point(int index, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
   // generate Halton sequence value for a given index and base
   KDNode_t sampled_point(2);
@@ -48,7 +48,7 @@ KDNode_t RRT::get_random_point(int index, polygon_t &map)
   return sampled_point;
 }
 
-KDNode_t RRT::next_point(KDNode_t &sampled_point, KDNode_t &nearest, polygon_t &map)
+KDNode_t RRT::next_point(KDNode_t &sampled_point, KDNode_t &nearest, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
   // from sampled point and nearest point get the candidate point
   // check if it exceedes d_max
@@ -95,7 +95,7 @@ bool RRT::are_nodes_equal(const KDNode_t &a, const KDNode_t &b)
   return true;
 }
 
-bool RRT::add_edge(KDNode_t &new_node, KDNode_t &nearest_node, polygon_t &map)
+bool RRT::add_edge(KDNode_t &new_node, KDNode_t &nearest_node, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
   //  add path between new_node and nearest_node
   //! if the path and the points are inside the polygon
@@ -126,7 +126,7 @@ bool RRT::add_node(KDNode_t &new_node)
   return true;
 }
 
-bool RRT::valid_point(KDNode_t &sampled_point, polygon_t &map)
+bool RRT::valid_point(KDNode_t &sampled_point, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
   point_t aux_point;
   aux_point.set<0>(sampled_point.at(0));
@@ -135,7 +135,7 @@ bool RRT::valid_point(KDNode_t &sampled_point, polygon_t &map)
   return boost::geometry::within(aux_point, map);
 }
 
-bool RRT::valid_segment(KDNode_t &start, KDNode_t &end, polygon_t &map)
+bool RRT::valid_segment(KDNode_t &start, KDNode_t &end, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
   // check if a segment with start and end points whole within the polygon map
   // will approximate the segment with a polygon so the function within can be used
@@ -246,7 +246,7 @@ std::vector<KDNode_t> RRT::get_path(KDNode_t &start)
 
 //----------- RRT* METHODS -----------//
 
-KDNode_t RRT::get_best_neighbor(KDNode_t &new_point, KDNode_t &old_neigh, double range, polygon_t &map)
+KDNode_t RRT::get_best_neighbor(KDNode_t &new_point, KDNode_t &old_neigh, double range, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
   double current_cost, distance, best_cost;
   best_cost = 999;
@@ -270,7 +270,7 @@ KDNode_t RRT::get_best_neighbor(KDNode_t &new_point, KDNode_t &old_neigh, double
   return best;
 }
 
-void RRT::rewire(KDNode_t &new_point, double range, polygon_t &map)
+void RRT::rewire(KDNode_t &new_point, double range, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
   auto node_index = graph_lookup[new_point];
   double node_cost = g[node_index].cost;
