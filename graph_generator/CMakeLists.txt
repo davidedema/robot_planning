@@ -45,12 +45,6 @@ target_link_libraries(test_graph_generator Boost::headers)
 target_include_directories(test_graph_generator PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 
-
-add_executable(polygon_publisher src/display_poly.cpp)
-ament_target_dependencies(polygon_publisher rclcpp visualization_msgs geometry_msgs)
-install(TARGETS polygon_publisher DESTINATION lib/${PROJECT_NAME})
-
-
 install(TARGETS
   test_graph_generator
   DESTINATION lib/${PROJECT_NAME}
