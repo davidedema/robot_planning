@@ -164,15 +164,44 @@ int main(int argc, char **argv)
 
   // test dubins
 
-  std::vector<double> start = {1,2,0.3};
-  std::vector<double> end = {2,3,0.3};
+  std::vector<double> start = {0, 0, -2.09};
+  std::vector<double> end = {4, 0, 1.04};
   double kmax = 2;
 
   Dubins d(start, end, kmax);
 
   auto dubins_curve = d.dubins_shortest_path(start.at(0), start.at(1), start.at(2), end.at(0), end.at(1), end.at(2), kmax);
+  cout << "A1" << endl;
+  cout << " x0 " << dubins_curve.a1.x0 << endl;
+  cout << " y0 " << dubins_curve.a1.y0 << endl;
+  cout << " th0 " << dubins_curve.a1.th0 << endl;
+  cout << " k " << dubins_curve.a1.k << endl;
+  cout << " L " << dubins_curve.a1.L << endl;
+  cout << " xf " << dubins_curve.a1.xf << endl;
+  cout << " yf " << dubins_curve.a1.yf << endl;
+  cout << " thf " << dubins_curve.a1.thf << endl;
 
-  cout << dubins_curve.a2.L << endl;
+  cout << "A2" << endl;
+  cout << " x0 " << dubins_curve.a2.x0 << endl;
+  cout << " y0 " << dubins_curve.a2.y0 << endl;
+  cout << " th0 " << dubins_curve.a2.th0 << endl;
+  cout << " k " << dubins_curve.a2.k << endl;
+  cout << " L " << dubins_curve.a2.L << endl;
+  cout << " xf " << dubins_curve.a2.xf << endl;
+  cout << " yf " << dubins_curve.a2.yf << endl;
+  cout << " thf " << dubins_curve.a2.thf << endl;
+
+  cout << "A3" << endl;
+  cout << " x0 " << dubins_curve.a3.x0 << endl;
+  cout << " y0 " << dubins_curve.a3.y0 << endl;
+  cout << " th0 " << dubins_curve.a3.th0 << endl;
+  cout << " k " << dubins_curve.a3.k << endl;
+  cout << " L " << dubins_curve.a3.L << endl;
+  cout << " xf " << dubins_curve.a3.xf << endl;
+  cout << " yf " << dubins_curve.a3.yf << endl;
+  cout << " thf " << dubins_curve.a3.thf << endl;
+
+  cout << dubins_curve.L << endl;
 
   // rclcpp::init(argc, argv);
 

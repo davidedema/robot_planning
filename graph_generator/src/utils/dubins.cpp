@@ -195,7 +195,7 @@ std::vector<double> Dubins::circline(double L, double x0, double y0, double th0,
 {
   double x, y, th;
   x = x0 + L * this->sinc(k * L / 2) * cos(th0 + L * k / 2);
-  y = y0 + L * this->sinc(k * L / 2) * cos(th0 + L * k / 2);
+  y = y0 + L * this->sinc(k * L / 2) * sin(th0 + L * k / 2);
   th = this->mod2pi(th0 + L * k);
 
   return {x, y, th};
@@ -205,25 +205,30 @@ struct dubins_curve Dubins::dubins_shortest_path(double x0, double y0, double th
 {
   std::vector<double> scaled_quantities = this->scale_to_standard(x0, y0, th0, xf, yf, thf, kmax);
   int pidx = -1;
-  std::vector<double> result_dubins;
-
+  std::vector<double> best_dubins;
+  double L = 999;
+  double Lcur = 999;
   std::vector<int> ksign = {1, 0, 1, -1, 0, -1, 1, 0, -1, -1, 0, 1 - 1, 1, -1, 1, -1, 1};
 
   struct dubins_curve result;
 
   for (int i = 0; i < 6; i++)
   {
-    result_dubins = this->call_function(i, scaled_quantities.at(0), scaled_quantities.at(1), scaled_quantities.at(2));
-    if (!(result_dubins.at(0) == 0 && result_dubins.at(1) == 0 && result_dubins.at(2) == 0))
+    std::vector<double> result_d = this->call_function(i, scaled_quantities.at(0), scaled_quantities.at(1), scaled_quantities.at(2));
+    Lcur = result_d.at(0) + result_d.at(1) + result_d.at(2);
+    if (!(result_d.at(0) == 0 && result_d.at(1) == 0 && result_d.at(2) == 0) && Lcur < L)
     {
+      best_dubins = result_d;
+      Lcur = L;
       pidx = i;
+      break;
     }
   }
 
-
   if (pidx >= 0)
   {
-    std::vector<double> s = this->scale_from_standard(scaled_quantities.at(3), result_dubins.at(0), result_dubins.at(1), result_dubins.at(2));
+
+    std::vector<double> s = this->scale_from_standard(scaled_quantities.at(3), best_dubins.at(0), best_dubins.at(1), best_dubins.at(2));
 
     result = this->build_dubins(x0, y0, th0, s.at(0), s.at(1), s.at(2), ksign.at(3 * pidx) * kmax, ksign.at(3 * pidx + 1) * kmax, ksign.at(3 * pidx + 2) * kmax);
   }
