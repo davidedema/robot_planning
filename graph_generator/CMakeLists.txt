@@ -32,6 +32,7 @@ add_executable(test_graph_generator
   src/graph_node.cpp
   src/sampling_based/utils/rrt.cpp
   src/sampling_based/utils/kdtree.cpp
+  src/utils/dubins.cpp
   )
 
 ament_target_dependencies(test_graph_generator

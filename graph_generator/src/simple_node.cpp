@@ -9,6 +9,8 @@
 #include "graph_generator/sampling_based/utils/rrt.hpp"
 #include "graph_generator/sampling_based/utils/kdtree.hpp"
 
+#include "graph_generator/utils/dubins.hpp"
+
 #include <rclcpp/rclcpp.hpp>
 #include <visualization_msgs/msg/marker.hpp>
 #include <geometry_msgs/msg/point.hpp>
@@ -159,75 +161,88 @@ private:
 
 int main(int argc, char **argv)
 {
-  rclcpp::init(argc, argv);
 
-  // Create the node
-  auto node = std::make_shared<PointMarkerNode>();
+  // test dubins
 
-  // Monitor execution time
-  auto m = std::make_shared<GraphGenerator>();
+  std::vector<double> start = {1,2,0.3};
+  std::vector<double> end = {2,3,0.3};
+  double kmax = 2;
 
-  RCLCPP_INFO(m->get_logger(), "Waiting for obstacles, borders and gates...");
-  while (!m->obstacles_r_ || !m->borders_r_)
-  {
-    rclcpp::spin_some(m->get_node_base_interface());
-    rclcpp::sleep_for(std::chrono::milliseconds(100));
-  }
-  RCLCPP_INFO(m->get_logger(), "\033[1;32m Map info obtained\033[0m");
-  RCLCPP_INFO(m->get_logger(), "Building map");
-  auto map = m->get_map();
-  RCLCPP_INFO(m->get_logger(), "\033[1;32m Map built\033[0m");
-  RCLCPP_INFO(m->get_logger(), "Sampling test");
+  Dubins d(start, end, kmax);
 
-  RRT _rrt;
+  auto dubins_curve = d.dubins_shortest_path(start.at(0), start.at(1), start.at(2), end.at(0), end.at(1), end.at(2), kmax);
 
-  std::vector<std::vector<double>> sampled_points;
-  std::vector<std::vector<double>> path_points;
+  cout << dubins_curve.a2.L << endl;
 
-  // Set start and goal
-  KDNode_t start = {5, 5};
-  KDNode_t goal = {-7, 7};
-  vector<KDNode_t> path;
+  // rclcpp::init(argc, argv);
 
-  _rrt.set_problem(start, goal);
-  for (uint i = 1; i < 3000; i++)
-  {
-    auto point = _rrt.get_random_point(i, map);
-    auto nearest = _rrt.get_nn(point, 1);
-    auto new_point = _rrt.next_point(point, nearest, map);
-    auto best_one = _rrt.get_best_neighbor(new_point, nearest, 2, map);
-    if (_rrt.add_edge(new_point, best_one, map))
-    {
-      sampled_points.push_back(new_point);
-    }
-    _rrt.rewire(new_point, 2, map);
-    if (_rrt.is_goal(new_point))
-    {
-      path = _rrt.get_path(new_point);
-      // break;
-    }
-  }
+  // // Create the node
+  // auto node = std::make_shared<PointMarkerNode>();
 
-  // Convert path to 2D points
-  for (const auto &p : path)
-  {
-    path_points.push_back({p.at(0), p.at(1)});
-  }
+  // // Monitor execution time
+  // auto m = std::make_shared<GraphGenerator>();
 
-  // Set points in the node
-  node->setSampledPoints(sampled_points);
-  node->setPathPoints(path_points);
+  // RCLCPP_INFO(m->get_logger(), "Waiting for obstacles, borders and gates...");
+  // while (!m->obstacles_r_ || !m->borders_r_)
+  // {
+  //   rclcpp::spin_some(m->get_node_base_interface());
+  //   rclcpp::sleep_for(std::chrono::milliseconds(100));
+  // }
+  // RCLCPP_INFO(m->get_logger(), "\033[1;32m Map info obtained\033[0m");
+  // RCLCPP_INFO(m->get_logger(), "Building map");
+  // auto map = m->get_map();
+  // RCLCPP_INFO(m->get_logger(), "\033[1;32m Map built\033[0m");
+  // RCLCPP_INFO(m->get_logger(), "Sampling test");
 
-  // Output path
-  for (const auto &p : path)
-  {
-    cout << p.at(0) << "  " << p.at(1) << endl;
-  }
+  // RRT _rrt;
 
-  // Keep the node alive
-  rclcpp::spin(node);
+  // std::vector<std::vector<double>> sampled_points;
+  // std::vector<std::vector<double>> path_points;
 
-  rclcpp::shutdown();
-  cout << "Done!" << endl;
+  // // Set start and goal
+  // KDNode_t start = {5, 5};
+  // KDNode_t goal = {-7, 7};
+  // vector<KDNode_t> path;
+
+  // _rrt.set_problem(start, goal);
+  // for (uint i = 1; i < 3000; i++)
+  // {
+  //   auto point = _rrt.get_random_point(i, map);
+  //   auto nearest = _rrt.get_nn(point, 1);
+  //   auto new_point = _rrt.next_point(point, nearest, map);
+  //   auto best_one = _rrt.get_best_neighbor(new_point, nearest, 2, map);
+  //   if (_rrt.add_edge(new_point, best_one, map))
+  //   {
+  //     sampled_points.push_back(new_point);
+  //   }
+  //   _rrt.rewire(new_point, 2, map);
+  //   if (_rrt.is_goal(new_point))
+  //   {
+  //     path = _rrt.get_path(new_point);
+  //     // break;
+  //   }
+  // }
+
+  // // Convert path to 2D points
+  // for (const auto &p : path)
+  // {
+  //   path_points.push_back({p.at(0), p.at(1)});
+  // }
+
+  // // Set points in the node
+  // node->setSampledPoints(sampled_points);
+  // node->setPathPoints(path_points);
+
+  // // Output path
+  // for (const auto &p : path)
+  // {
+  //   cout << p.at(0) << "  " << p.at(1) << endl;
+  // }
+
+  // // Keep the node alive
+  // rclcpp::spin(node);
+
+  // rclcpp::shutdown();
+  // cout << "Done!" << endl;
   return 0;
 }

@@ -1,7 +1,9 @@
 #pragma once
 
 #include <vector>
-#include <cmath>
+#include <cmath>  
+#include <cstdlib>
+#include <iostream>
 
 struct dubins_arc
 {

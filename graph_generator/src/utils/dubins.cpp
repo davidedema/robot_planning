@@ -1,4 +1,4 @@
-#include "grapg_generator/utils/dubins.hpp"
+#include "graph_generator/utils/dubins.hpp"
 
 Dubins::Dubins(std::vector<double> start, std::vector<double> end, double Kmax)
 {
@@ -18,7 +18,7 @@ Dubins::~Dubins() {}
 
 double Dubins::mod2pi(double angle)
 {
-  double result = std::fmod(ang, 2 * M_PI);
+  double result = std::fmod(angle, 2 * M_PI);
   if (result < 0)
   {
     result += 2 * M_PI;
@@ -177,12 +177,8 @@ struct dubins_curve Dubins::build_dubins(double x0, double y0, double th0, doubl
   struct dubins_arc a2 = this->build_dubins_arc(a1.xf, a1.yf, a1.thf, k2, s2);
   struct dubins_arc a3 = this->build_dubins_arc(a2.xf, a2.yf, a2.thf, k3, s3);
 
-  struct dubins_curve result =
-      {
-          .a1 = a1,
-          .a2 = a2,
-          .a3 = a3,
-          .L = a1.L + a2.L + a3.L};
+  struct dubins_curve result = {a1, a2, a3, a1.L + a2.L + a3.L};
+
   return result;
 }
 
@@ -190,16 +186,8 @@ struct dubins_arc Dubins::build_dubins_arc(double x0, double y0, double th0, dou
 {
   std::vector<double> end = this->circline(L, x0, y0, th0, k);
 
-  struct dubins_arc result =
-      {
-          .x0 = x0,
-          .y0 = y0,
-          .th0 = th0,
-          .L = L,
-          .k = k,
-          .xf = end.at(0),
-          .yf = end.at(1),
-          .thf = end.at(2)};
+  struct dubins_arc result = {x0, y0, th0, L, k, end.at(0), end.at(1), end.at(2)};
+
   return result;
 }
 
@@ -217,7 +205,7 @@ struct dubins_curve Dubins::dubins_shortest_path(double x0, double y0, double th
 {
   std::vector<double> scaled_quantities = this->scale_to_standard(x0, y0, th0, xf, yf, thf, kmax);
   int pidx = -1;
-  std::vector<double> result;
+  std::vector<double> result_dubins;
 
   std::vector<int> ksign = {1, 0, 1, -1, 0, -1, 1, 0, -1, -1, 0, 1 - 1, 1, -1, 1, -1, 1};
 
@@ -225,16 +213,17 @@ struct dubins_curve Dubins::dubins_shortest_path(double x0, double y0, double th
 
   for (int i = 0; i < 6; i++)
   {
-    result = this->call_function(i, scaled_quantities.at(0), scaled_quantities.at(1), scaled_quantities.at(2));
-    if (!(result.at(1) == 0 && result.at(2) == 0 result.at(3) == 0))
+    result_dubins = this->call_function(i, scaled_quantities.at(0), scaled_quantities.at(1), scaled_quantities.at(2));
+    if (!(result_dubins.at(0) == 0 && result_dubins.at(1) == 0 && result_dubins.at(2) == 0))
     {
       pidx = i;
     }
   }
 
+
   if (pidx >= 0)
   {
-    std::vector<double> s = this->scale_from_standard(scaled_quantities.at(3), result.at(1), result.at(2), result.at(3));
+    std::vector<double> s = this->scale_from_standard(scaled_quantities.at(3), result_dubins.at(0), result_dubins.at(1), result_dubins.at(2));
 
     result = this->build_dubins(x0, y0, th0, s.at(0), s.at(1), s.at(2), ksign.at(3 * pidx) * kmax, ksign.at(3 * pidx + 1) * kmax, ksign.at(3 * pidx + 2) * kmax);
   }
