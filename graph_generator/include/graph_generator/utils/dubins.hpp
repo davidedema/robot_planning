@@ -56,6 +56,10 @@ public:
   struct dubins_curve build_dubins(double x0, double y0, double th0, double s1, double s2, double s3, double k1, double k2, double k3);
   struct dubins_arc build_dubins_arc(double x0, double y0, double th0, double k, double L);
 
+  // multipoint dubins
+  std::vector<struct dubins_curve> dubins_multi_point(double x0, double y0, double th0, double xf, double yf, double thf, std::vector<std::vector<double>> points, double kmax);
+
+
 private:
   std::vector<double> start;
   std::vector<double> end;

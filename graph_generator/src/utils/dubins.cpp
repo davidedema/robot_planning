@@ -235,3 +235,39 @@ struct dubins_curve Dubins::dubins_shortest_path(double x0, double y0, double th
 
   return result;
 }
+
+std::vector<struct dubins_curve> Dubins::dubins_multi_point(double x0, double y0, double th0, double xf, double yf, double thf, std::vector<std::vector<double>> points, double kmax)
+{
+  std::vector<struct dubins_curve> curves;
+  std::vector<double> known_point = {xf, yf, thf};
+  struct dubins_curve best_curve;
+  double L = 999;
+  double Lcur;
+
+  for (auto it = points.rbegin(); it != points.rend(); ++it)
+  {
+    const auto &p = *it;
+
+    // find best
+    for (uint deg = 0; deg < 360; deg++)
+    {
+      double rad = deg * M_PI / 180;
+      auto aux_curve = this->dubins_shortest_path(p.at(0), p.at(1), rad, known_point.at(0), known_point.at(1), known_point.at(2), kmax);
+      Lcur = aux_curve.L;
+      if (Lcur < L)
+      {
+        best_curve = aux_curve;
+        L = Lcur;
+      }
+    }
+    known_point.at(0) = best_curve.a1.x0;
+    known_point.at(1) = best_curve.a1.y0;
+    known_point.at(2) = best_curve.a1.th0;
+    curves.insert(curves.begin(), best_curve);
+  }
+
+  // insert last
+  curves.insert(curves.begin(), this->dubins_shortest_path(x0, y0, th0, known_point.at(0), known_point.at(1), known_point.at(2), kmax));
+
+  return curves;
+}
