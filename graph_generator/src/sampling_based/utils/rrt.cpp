@@ -298,3 +298,41 @@ void RRT::rewire(KDNode_t &new_point, double range, boost::geometry::model::mult
     }
   }
 }
+
+// ------------- SMOOTH ---------- //
+
+std::vector<KDNode_t> RRT::smooth_path(std::vector<KDNode_t> &path, boost::geometry::model::multi_polygon<polygon_t> &map)
+{
+  // try to smooth the path
+  std::vector<KDNode_t> new_path;
+  KDNode_t point_a = path.at(0);
+  KDNode_t point_b = path.back();
+  bool finish = false;
+  size_t i = path.size() - 1;
+
+  while (!finish)
+  {
+    if (this->valid_segment(point_a, point_b, map))
+    {
+      new_path.push_back(point_a);
+      new_path.push_back(point_b);
+      i = path.size() - 1;
+      if (point_b == path.back())
+      {
+        finish = true;
+      }
+      else
+      {
+        point_a = point_b;
+        point_b = path.back();
+      }
+    }
+    else
+    {
+      --i;
+      point_b = path.at(i);
+    }
+  }
+
+  return new_path;
+}

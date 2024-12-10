@@ -164,114 +164,125 @@ int main(int argc, char **argv)
 
   // test dubins
 
-  std::vector<double> start = {0, 0, -2.09};
-  std::vector<double> end = {4, 0, 1.04};
-  double kmax = 2;
+  // std::vector<double> start = {0, 0, -2.09};
+  // std::vector<double> end = {4, 0, 1.04};
+  // double kmax = 2;
 
-  Dubins d(start, end, kmax);
+  // Dubins d(start, end, kmax);
 
-  auto dubins_curve = d.dubins_shortest_path(start.at(0), start.at(1), start.at(2), end.at(0), end.at(1), end.at(2), kmax);
-  cout << "A1" << endl;
-  cout << " x0 " << dubins_curve.a1.x0 << endl;
-  cout << " y0 " << dubins_curve.a1.y0 << endl;
-  cout << " th0 " << dubins_curve.a1.th0 << endl;
-  cout << " k " << dubins_curve.a1.k << endl;
-  cout << " L " << dubins_curve.a1.L << endl;
-  cout << " xf " << dubins_curve.a1.xf << endl;
-  cout << " yf " << dubins_curve.a1.yf << endl;
-  cout << " thf " << dubins_curve.a1.thf << endl;
+  // auto dubins_curve = d.dubins_shortest_path(start.at(0), start.at(1), start.at(2), end.at(0), end.at(1), end.at(2), kmax);
+  // cout << "A1" << endl;
+  // cout << " x0 " << dubins_curve.a1.x0 << endl;
+  // cout << " y0 " << dubins_curve.a1.y0 << endl;
+  // cout << " th0 " << dubins_curve.a1.th0 << endl;
+  // cout << " k " << dubins_curve.a1.k << endl;
+  // cout << " L " << dubins_curve.a1.L << endl;
+  // cout << " xf " << dubins_curve.a1.xf << endl;
+  // cout << " yf " << dubins_curve.a1.yf << endl;
+  // cout << " thf " << dubins_curve.a1.thf << endl;
 
-  cout << "A2" << endl;
-  cout << " x0 " << dubins_curve.a2.x0 << endl;
-  cout << " y0 " << dubins_curve.a2.y0 << endl;
-  cout << " th0 " << dubins_curve.a2.th0 << endl;
-  cout << " k " << dubins_curve.a2.k << endl;
-  cout << " L " << dubins_curve.a2.L << endl;
-  cout << " xf " << dubins_curve.a2.xf << endl;
-  cout << " yf " << dubins_curve.a2.yf << endl;
-  cout << " thf " << dubins_curve.a2.thf << endl;
+  // cout << "A2" << endl;
+  // cout << " x0 " << dubins_curve.a2.x0 << endl;
+  // cout << " y0 " << dubins_curve.a2.y0 << endl;
+  // cout << " th0 " << dubins_curve.a2.th0 << endl;
+  // cout << " k " << dubins_curve.a2.k << endl;
+  // cout << " L " << dubins_curve.a2.L << endl;
+  // cout << " xf " << dubins_curve.a2.xf << endl;
+  // cout << " yf " << dubins_curve.a2.yf << endl;
+  // cout << " thf " << dubins_curve.a2.thf << endl;
 
-  cout << "A3" << endl;
-  cout << " x0 " << dubins_curve.a3.x0 << endl;
-  cout << " y0 " << dubins_curve.a3.y0 << endl;
-  cout << " th0 " << dubins_curve.a3.th0 << endl;
-  cout << " k " << dubins_curve.a3.k << endl;
-  cout << " L " << dubins_curve.a3.L << endl;
-  cout << " xf " << dubins_curve.a3.xf << endl;
-  cout << " yf " << dubins_curve.a3.yf << endl;
-  cout << " thf " << dubins_curve.a3.thf << endl;
+  // cout << "A3" << endl;
+  // cout << " x0 " << dubins_curve.a3.x0 << endl;
+  // cout << " y0 " << dubins_curve.a3.y0 << endl;
+  // cout << " th0 " << dubins_curve.a3.th0 << endl;
+  // cout << " k " << dubins_curve.a3.k << endl;
+  // cout << " L " << dubins_curve.a3.L << endl;
+  // cout << " xf " << dubins_curve.a3.xf << endl;
+  // cout << " yf " << dubins_curve.a3.yf << endl;
+  // cout << " thf " << dubins_curve.a3.thf << endl;
 
-  cout << dubins_curve.L << endl;
+  // cout << dubins_curve.L << endl;
 
-  // rclcpp::init(argc, argv);
+  rclcpp::init(argc, argv);
 
-  // // Create the node
-  // auto node = std::make_shared<PointMarkerNode>();
+  // Create the node
+  auto node = std::make_shared<PointMarkerNode>();
 
-  // // Monitor execution time
-  // auto m = std::make_shared<GraphGenerator>();
+  // Monitor execution time
+  auto m = std::make_shared<GraphGenerator>();
 
-  // RCLCPP_INFO(m->get_logger(), "Waiting for obstacles, borders and gates...");
-  // while (!m->obstacles_r_ || !m->borders_r_)
-  // {
-  //   rclcpp::spin_some(m->get_node_base_interface());
-  //   rclcpp::sleep_for(std::chrono::milliseconds(100));
-  // }
-  // RCLCPP_INFO(m->get_logger(), "\033[1;32m Map info obtained\033[0m");
-  // RCLCPP_INFO(m->get_logger(), "Building map");
-  // auto map = m->get_map();
-  // RCLCPP_INFO(m->get_logger(), "\033[1;32m Map built\033[0m");
-  // RCLCPP_INFO(m->get_logger(), "Sampling test");
+  RCLCPP_INFO(m->get_logger(), "Waiting for obstacles, borders and gates...");
+  while (!m->obstacles_r_ || !m->borders_r_)
+  {
+    rclcpp::spin_some(m->get_node_base_interface());
+    rclcpp::sleep_for(std::chrono::milliseconds(100));
+  }
+  RCLCPP_INFO(m->get_logger(), "\033[1;32m Map info obtained\033[0m");
+  RCLCPP_INFO(m->get_logger(), "Building map");
+  auto map = m->get_map();
+  RCLCPP_INFO(m->get_logger(), "\033[1;32m Map built\033[0m");
+  RCLCPP_INFO(m->get_logger(), "Sampling test");
 
-  // RRT _rrt;
+  RRT _rrt;
 
-  // std::vector<std::vector<double>> sampled_points;
-  // std::vector<std::vector<double>> path_points;
+  std::vector<std::vector<double>> sampled_points;
+  std::vector<std::vector<double>> path_points;
+  std::vector<std::vector<double>> path_points2;
 
-  // // Set start and goal
-  // KDNode_t start = {5, 5};
-  // KDNode_t goal = {-7, 7};
-  // vector<KDNode_t> path;
+  // Set start and goal
+  KDNode_t start = {5, 5};
+  KDNode_t goal = {-4, 2.6};
+  vector<KDNode_t> path;
 
-  // _rrt.set_problem(start, goal);
-  // for (uint i = 1; i < 3000; i++)
-  // {
-  //   auto point = _rrt.get_random_point(i, map);
-  //   auto nearest = _rrt.get_nn(point, 1);
-  //   auto new_point = _rrt.next_point(point, nearest, map);
-  //   auto best_one = _rrt.get_best_neighbor(new_point, nearest, 2, map);
-  //   if (_rrt.add_edge(new_point, best_one, map))
-  //   {
-  //     sampled_points.push_back(new_point);
-  //   }
-  //   _rrt.rewire(new_point, 2, map);
-  //   if (_rrt.is_goal(new_point))
-  //   {
-  //     path = _rrt.get_path(new_point);
-  //     // break;
-  //   }
-  // }
+  _rrt.set_problem(start, goal);
+  for (uint i = 1; i < 3000; i++)
+  {
+    auto point = _rrt.get_random_point(i, map);
+    auto nearest = _rrt.get_nn(point, 1);
+    auto new_point = _rrt.next_point(point, nearest, map);
+    auto best_one = _rrt.get_best_neighbor(new_point, nearest, 2, map);
+    if (_rrt.add_edge(new_point, best_one, map))
+    {
+      sampled_points.push_back(new_point);
+    }
+    _rrt.rewire(new_point, 2, map);
+    if (_rrt.is_goal(new_point))
+    {
+      path = _rrt.get_path(new_point);
+      // break;
+    }
+  }
 
-  // // Convert path to 2D points
-  // for (const auto &p : path)
-  // {
-  //   path_points.push_back({p.at(0), p.at(1)});
-  // }
+  // Convert path to 2D points
+  for (const auto &p : path)
+  {
+    path_points.push_back({p.at(0), p.at(1)});
+  }
 
-  // // Set points in the node
-  // node->setSampledPoints(sampled_points);
-  // node->setPathPoints(path_points);
+  // Set points in the node
+  node->setSampledPoints(sampled_points);
+  node->setPathPoints(path_points);
 
-  // // Output path
+  // now find new smoothed path
+  auto new_path = _rrt.smooth_path(path, map);
+
+  // Convert path to 2D points
+  for (const auto &p : new_path)
+  {
+    cout << p.at(0) << "  " << p.at(1) << endl;
+    path_points2.push_back({p.at(0), p.at(1)});
+  }
+  node->setPathPoints(path_points2);
+  // Output path
   // for (const auto &p : path)
   // {
   //   cout << p.at(0) << "  " << p.at(1) << endl;
   // }
 
-  // // Keep the node alive
-  // rclcpp::spin(node);
+  // Keep the node alive
+  rclcpp::spin(node);
 
-  // rclcpp::shutdown();
-  // cout << "Done!" << endl;
+  rclcpp::shutdown();
+  cout << "Done!" << endl;
   return 0;
 }

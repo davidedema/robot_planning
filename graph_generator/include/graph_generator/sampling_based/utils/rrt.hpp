@@ -73,4 +73,5 @@ public:
   bool is_goal(KDNode_t &point);
   void create_inflated_polygon(const point_t &p1, const point_t &p2, double epsilon, polygon_t &polygon);
   std::vector<KDNode_t> get_path(KDNode_t &start);
+  std::vector<KDNode_t> smooth_path(std::vector<KDNode_t> &path, boost::geometry::model::multi_polygon<polygon_t> &map);
 };
