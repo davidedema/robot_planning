@@ -315,10 +315,10 @@ std::vector<KDNode_t> RRT::smooth_path(std::vector<KDNode_t> &path, boost::geome
     if (this->valid_segment(point_a, point_b, map))
     {
       new_path.push_back(point_a);
-      new_path.push_back(point_b);
       i = path.size() - 1;
       if (point_b == path.back())
       {
+        new_path.push_back(point_b);
         finish = true;
       }
       else

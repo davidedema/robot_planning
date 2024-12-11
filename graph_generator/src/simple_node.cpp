@@ -319,7 +319,7 @@ int main(int argc, char **argv)
 
   // Set start and goal
   KDNode_t start = {5, 5};
-  KDNode_t goal = {0.34, -2.43};
+  KDNode_t goal = {-2, -1.95};
   vector<KDNode_t> path;
 
   _rrt.set_problem(start, goal);
@@ -374,7 +374,7 @@ int main(int argc, char **argv)
   {
     cout << p.at(0) << "  " << p.at(1) << endl;
   }
-
+  cout << "  " << endl;
   path_points2.erase(path_points2.begin());
   path_points2.erase(path_points2.end());
 
@@ -383,7 +383,7 @@ int main(int argc, char **argv)
     cout << p.at(0) << "  " << p.at(1) << endl;
   }
 
-  auto dubins_curves = d.dubins_multi_point(start.at(0), start.at(1), -M_PI/2, goal.at(0), goal.at(1), -M_PI/2, {{2.11426, -3.5772}}, kmax);
+  auto dubins_curves = d.dubins_multi_point(start.at(0), start.at(1), -M_PI/2, goal.at(0), goal.at(1), -M_PI/2, path_points2, kmax);
   node->setDubinsCurves(dubins_curves);
 
   // Keep the node alive
