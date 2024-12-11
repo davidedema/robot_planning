@@ -240,13 +240,13 @@ std::vector<struct dubins_curve> Dubins::dubins_multi_point(double x0, double y0
 {
   std::vector<struct dubins_curve> curves;
   std::vector<double> known_point = {xf, yf, thf};
-  struct dubins_curve best_curve;
-  double L = 999;
-  double Lcur;
 
   for (auto it = points.rbegin(); it != points.rend(); ++it)
   {
     const auto &p = *it;
+    double L = 999;
+    double Lcur;
+    struct dubins_curve best_curve;
 
     // find best
     for (uint deg = 0; deg < 360; deg++)
@@ -263,6 +263,7 @@ std::vector<struct dubins_curve> Dubins::dubins_multi_point(double x0, double y0
     known_point.at(0) = best_curve.a1.x0;
     known_point.at(1) = best_curve.a1.y0;
     known_point.at(2) = best_curve.a1.th0;
+
     curves.insert(curves.begin(), best_curve);
   }
 

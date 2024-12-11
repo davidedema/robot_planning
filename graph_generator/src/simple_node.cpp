@@ -32,6 +32,10 @@ public:
     path_pub_ = this->create_publisher<visualization_msgs::msg::Marker>(
         "path_marker", rclcpp::QoS(10));
 
+    // Publisher for the Dubins curve
+    dubins_curve_pub_ = this->create_publisher<visualization_msgs::msg::Marker>(
+        "dubins_curve_marker", rclcpp::QoS(10));
+
     // Timer to periodically check for subscribers and publish
     timer_ = this->create_wall_timer(
         std::chrono::milliseconds(timer_interval_ms_),
@@ -50,11 +54,17 @@ public:
     path_points_ = path_points;
   }
 
+  void setDubinsCurves(const std::vector<dubins_curve> &curves)
+  {
+    dubins_curves_ = curves;
+  }
+
 private:
   void checkAndPublishMarkers()
   {
     if (sampled_points_pub_->get_subscription_count() > 0 ||
-        path_pub_->get_subscription_count() > 0)
+        path_pub_->get_subscription_count() > 0 ||
+        dubins_curve_pub_->get_subscription_count() > 0)
     {
       RCLCPP_INFO_ONCE(this->get_logger(), "Subscriber detected. Publishing markers.");
       publishMarkers();
@@ -65,6 +75,7 @@ private:
   {
     publishSampledPointsMarker();
     publishPathMarker();
+    publishDubinsCurveMarkers();
   }
 
   void publishSampledPointsMarker()
@@ -150,11 +161,80 @@ private:
     path_pub_->publish(marker);
     RCLCPP_INFO(this->get_logger(), "Published path with %zu points.", marker.points.size());
   }
+  void publishDubinsCurveMarkers()
+  {
+    visualization_msgs::msg::Marker marker;
+    marker.header.frame_id = "map"; // Adjust frame_id as needed
+    marker.header.stamp = this->now();
+    marker.ns = "dubins_curve";
+    marker.id = 3;
+    marker.type = visualization_msgs::msg::Marker::LINE_STRIP; // Connected curves
+    marker.action = visualization_msgs::msg::Marker::ADD;
 
+    // Define marker properties
+    marker.scale.x = 0.05; // Curve line width
+    marker.color.r = 0.0;
+    marker.color.g = 1.0; // Green color
+    marker.color.b = 0.0;
+    marker.color.a = 1.0;
+
+    // Fill marker points for all Dubins curves
+    for (const auto &curve : dubins_curves_)
+    {
+      auto add_arc_points = [&](const dubins_arc &arc)
+      {
+        double step = 0.1; // Step size for sampling points along the arc
+        double theta = arc.th0;
+
+        if (std::abs(arc.k) < 1e-6)
+        {
+          // Straight-line case
+          for (double s = 0; s <= arc.L; s += step)
+          {
+            double x = arc.x0 + s * cos(theta);
+            double y = arc.y0 + s * sin(theta);
+            geometry_msgs::msg::Point p;
+            p.x = x;
+            p.y = y;
+            p.z = 0.0;
+            marker.points.push_back(p);
+          }
+        }
+        else
+        {
+          // Curved case
+          double radius = 1.0 / arc.k;
+          for (double s = 0; s <= arc.L; s += step)
+          {
+            double x = arc.x0 + radius * (sin(theta + arc.k * s) - sin(theta));
+            double y = arc.y0 + radius * (cos(theta) - cos(theta + arc.k * s));
+            geometry_msgs::msg::Point p;
+            p.x = x;
+            p.y = y;
+            p.z = 0.0;
+            marker.points.push_back(p);
+          }
+        }
+      };
+
+      // Add points from all arcs in the Dubins curve
+      add_arc_points(curve.a1);
+      add_arc_points(curve.a2);
+      add_arc_points(curve.a3);
+    }
+
+    // Publish the marker
+    dubins_curve_pub_->publish(marker);
+    RCLCPP_INFO(this->get_logger(), "Published Dubins curves with %zu points.", marker.points.size());
+  }
   std::vector<std::vector<double>> sampled_points_;
   std::vector<std::vector<double>> path_points_;
+  std::vector<struct dubins_curve> dubins_curves_;
+
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr sampled_points_pub_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr path_pub_;
+  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr dubins_curve_pub_;
+
   rclcpp::TimerBase::SharedPtr timer_;
   int timer_interval_ms_;
 };
@@ -162,51 +242,59 @@ private:
 int main(int argc, char **argv)
 {
 
-  // test dubins
-
-  // std::vector<double> start = {0, 0, -2.09};
-  // std::vector<double> end = {4, 0, 1.04};
-  // double kmax = 2;
-
-  // Dubins d(start, end, kmax);
-
-  // auto dubins_curve = d.dubins_shortest_path(start.at(0), start.at(1), start.at(2), end.at(0), end.at(1), end.at(2), kmax);
-  // cout << "A1" << endl;
-  // cout << " x0 " << dubins_curve.a1.x0 << endl;
-  // cout << " y0 " << dubins_curve.a1.y0 << endl;
-  // cout << " th0 " << dubins_curve.a1.th0 << endl;
-  // cout << " k " << dubins_curve.a1.k << endl;
-  // cout << " L " << dubins_curve.a1.L << endl;
-  // cout << " xf " << dubins_curve.a1.xf << endl;
-  // cout << " yf " << dubins_curve.a1.yf << endl;
-  // cout << " thf " << dubins_curve.a1.thf << endl;
-
-  // cout << "A2" << endl;
-  // cout << " x0 " << dubins_curve.a2.x0 << endl;
-  // cout << " y0 " << dubins_curve.a2.y0 << endl;
-  // cout << " th0 " << dubins_curve.a2.th0 << endl;
-  // cout << " k " << dubins_curve.a2.k << endl;
-  // cout << " L " << dubins_curve.a2.L << endl;
-  // cout << " xf " << dubins_curve.a2.xf << endl;
-  // cout << " yf " << dubins_curve.a2.yf << endl;
-  // cout << " thf " << dubins_curve.a2.thf << endl;
-
-  // cout << "A3" << endl;
-  // cout << " x0 " << dubins_curve.a3.x0 << endl;
-  // cout << " y0 " << dubins_curve.a3.y0 << endl;
-  // cout << " th0 " << dubins_curve.a3.th0 << endl;
-  // cout << " k " << dubins_curve.a3.k << endl;
-  // cout << " L " << dubins_curve.a3.L << endl;
-  // cout << " xf " << dubins_curve.a3.xf << endl;
-  // cout << " yf " << dubins_curve.a3.yf << endl;
-  // cout << " thf " << dubins_curve.a3.thf << endl;
-
-  // cout << dubins_curve.L << endl;
-
   rclcpp::init(argc, argv);
 
   // Create the node
   auto node = std::make_shared<PointMarkerNode>();
+
+  // test dubins
+
+  // std::vector<double> start = {0, 0, -2.09};
+  // std::vector<double> end = {4, 0, 1.04};
+  // std::vector<std::vector<double>> points = {{1, 0}, {3, 0}};
+  double kmax = 2;
+
+  // auto dubins_curve = d.dubins_shortest_path(start.at(0), start.at(1), start.at(2), end.at(0), end.at(1), end.at(2), kmax);
+
+  // cout << "finished" << endl;
+  // for (const auto &curve : dubins_curves)
+  // {
+  //   cout << "A1" << endl;
+  //   cout << " x0 " << curve.a1.x0 << endl;
+  //   cout << " y0 " << curve.a1.y0 << endl;
+  //   cout << " th0 " << curve.a1.th0 << endl;
+  //   cout << " k " << curve.a1.k << endl;
+  //   cout << " L " << curve.a1.L << endl;
+  //   cout << " xf " << curve.a1.xf << endl;
+  //   cout << " yf " << curve.a1.yf << endl;
+  //   cout << " thf " << curve.a1.thf << endl;
+
+  //   cout << "A2" << endl;
+  //   cout << " x0 " << curve.a2.x0 << endl;
+  //   cout << " y0 " << curve.a2.y0 << endl;
+  //   cout << " th0 " << curve.a2.th0 << endl;
+  //   cout << " k " << curve.a2.k << endl;
+  //   cout << " L " << curve.a2.L << endl;
+  //   cout << " xf " << curve.a2.xf << endl;
+  //   cout << " yf " << curve.a2.yf << endl;
+  //   cout << " thf " << curve.a2.thf << endl;
+
+  //   cout << "A3" << endl;
+  //   cout << " x0 " << curve.a3.x0 << endl;
+  //   cout << " y0 " << curve.a3.y0 << endl;
+  //   cout << " th0 " << curve.a3.th0 << endl;
+  //   cout << " k " << curve.a3.k << endl;
+  //   cout << " L " << curve.a3.L << endl;
+  //   cout << " xf " << curve.a3.xf << endl;
+  //   cout << " yf " << curve.a3.yf << endl;
+  //   cout << " thf " << curve.a3.thf << endl;
+  //   cout << curve.L << endl;
+  // }
+
+  // rclcpp::init(argc, argv);
+
+  // // Create the node
+  // auto node = std::make_shared<PointMarkerNode>();
 
   // Monitor execution time
   auto m = std::make_shared<GraphGenerator>();
@@ -231,7 +319,7 @@ int main(int argc, char **argv)
 
   // Set start and goal
   KDNode_t start = {5, 5};
-  KDNode_t goal = {-4, 2.6};
+  KDNode_t goal = {0.34, -2.43};
   vector<KDNode_t> path;
 
   _rrt.set_problem(start, goal);
@@ -259,6 +347,7 @@ int main(int argc, char **argv)
     path_points.push_back({p.at(0), p.at(1)});
   }
 
+  Dubins d({0.0, 0.0}, {0.0, 0.0}, kmax);
   // Set points in the node
   node->setSampledPoints(sampled_points);
   node->setPathPoints(path_points);
@@ -272,12 +361,30 @@ int main(int argc, char **argv)
     cout << p.at(0) << "  " << p.at(1) << endl;
     path_points2.push_back({p.at(0), p.at(1)});
   }
+
+  // rclcpp::sleep_for(std::chrono::milliseconds(1000)); // Sleep for 1 second
   node->setPathPoints(path_points2);
   // Output path
   // for (const auto &p : path)
   // {
   //   cout << p.at(0) << "  " << p.at(1) << endl;
   // }
+
+  for (const auto &p : path_points2)
+  {
+    cout << p.at(0) << "  " << p.at(1) << endl;
+  }
+
+  path_points2.erase(path_points2.begin());
+  path_points2.erase(path_points2.end());
+
+  for (const auto &p : path_points2)
+  {
+    cout << p.at(0) << "  " << p.at(1) << endl;
+  }
+
+  auto dubins_curves = d.dubins_multi_point(start.at(0), start.at(1), -M_PI/2, goal.at(0), goal.at(1), -M_PI/2, {{2.11426, -3.5772}}, kmax);
+  node->setDubinsCurves(dubins_curves);
 
   // Keep the node alive
   rclcpp::spin(node);
