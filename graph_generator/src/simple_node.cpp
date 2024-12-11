@@ -249,15 +249,17 @@ int main(int argc, char **argv)
 
   // test dubins
 
-  // std::vector<double> start = {0, 0, -2.09};
-  // std::vector<double> end = {4, 0, 1.04};
+  // std::vector<double> start = {0, 0, 2.09};
+  // std::vector<double> end = {4, 0, -1.04};
   // std::vector<std::vector<double>> points = {{1, 0}, {3, 0}};
   double kmax = 2;
 
+  // Dubins d({0.0, 0.0}, {0.0, 0.0}, kmax);
   // auto dubins_curve = d.dubins_shortest_path(start.at(0), start.at(1), start.at(2), end.at(0), end.at(1), end.at(2), kmax);
 
+  // // auto dubins_curves = d.dubins_multi_point(start.at(0), start.at(1), start.at(2), end.at(0), end.at(1), end.at(2), points, kmax);
   // cout << "finished" << endl;
-  // for (const auto &curve : dubins_curves)
+  // for (const auto &curve : {dubins_curve})
   // {
   //   cout << "A1" << endl;
   //   cout << " x0 " << curve.a1.x0 << endl;
@@ -291,6 +293,11 @@ int main(int argc, char **argv)
   //   cout << curve.L << endl;
   // }
 
+  // std::vector<struct dubins_curve> a;
+  // a.push_back(dubins_curve);
+
+  // node->setDubinsCurves(a);
+
   // rclcpp::init(argc, argv);
 
   // // Create the node
@@ -319,10 +326,11 @@ int main(int argc, char **argv)
 
   // Set start and goal
   KDNode_t start = {5, 5};
-  KDNode_t goal = {-2, -1.95};
+  KDNode_t goal = {-6.1, 7};
   vector<KDNode_t> path;
 
-  _rrt.set_problem(start, goal);
+  _rrt.set_problem(start, goal); // Dubins d({0.0, 0.0}, {0.0, 0.0}, kmax);
+
   for (uint i = 1; i < 3000; i++)
   {
     auto point = _rrt.get_random_point(i, map);
@@ -340,7 +348,6 @@ int main(int argc, char **argv)
       // break;
     }
   }
-
   // Convert path to 2D points
   for (const auto &p : path)
   {
@@ -383,10 +390,10 @@ int main(int argc, char **argv)
     cout << p.at(0) << "  " << p.at(1) << endl;
   }
 
-  auto dubins_curves = d.dubins_multi_point(start.at(0), start.at(1), -M_PI/2, goal.at(0), goal.at(1), -M_PI/2, path_points2, kmax);
+  auto dubins_curves = d.dubins_multi_point(start.at(0), start.at(1), -M_PI / 2, goal.at(0), goal.at(1), -M_PI / 2, path_points2, kmax, _rrt, map);
   node->setDubinsCurves(dubins_curves);
 
-  // Keep the node alive
+  // // Keep the node alive
   rclcpp::spin(node);
 
   rclcpp::shutdown();

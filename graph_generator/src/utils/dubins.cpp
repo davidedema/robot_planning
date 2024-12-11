@@ -211,14 +211,14 @@ std::vector<double> Dubins::circline(double L, double x0, double y0, double th0,
   return {x, y, th};
 }
 
-struct dubins_curve Dubins::dubins_shortest_path(double x0, double y0, double th0, double xf, double yf, double thf, double kmax)
+struct dubins_curve Dubins::dubins_shortest_path(double x0, double y0, double th0, double xf, double yf, double thf, double kmax, RRT &_rrt, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
   std::vector<double> scaled_quantities = this->scale_to_standard(x0, y0, th0, xf, yf, thf, kmax);
   int pidx = -1;
   std::vector<double> best_dubins;
   double L = 999;
   double Lcur = 999;
-  std::vector<int> ksign = {1, 0, 1, -1, 0, -1, 1, 0, -1, -1, 0, 1 - 1, 1, -1, 1, -1, 1};
+  std::vector<int> ksign = {1, 0, 1, -1, 0, -1, 1, 0, -1, -1, 0, 1, - 1, 1, -1, 1, -1, 1};
 
   struct dubins_curve result;
 
@@ -226,14 +226,22 @@ struct dubins_curve Dubins::dubins_shortest_path(double x0, double y0, double th
   {
     std::vector<double> result_d = this->call_function(i, scaled_quantities.at(0), scaled_quantities.at(1), scaled_quantities.at(2));
     Lcur = result_d.at(0) + result_d.at(1) + result_d.at(2);
-    if (!(result_d.at(0) == 0 && result_d.at(1) == 0 && result_d.at(2) == 0) && Lcur < L)
+
+    struct dubins_curve tmp_curve;
+
+    if (!(result_d.at(0) == 0 && result_d.at(1) == 0 && result_d.at(2) == 0))
     {
-      best_dubins = result_d;
-      L = Lcur;
-      pidx = i;
+      std::vector<double> aux_1 = this->scale_from_standard(scaled_quantities.at(3), result_d.at(0), result_d.at(1), result_d.at(2));
+      tmp_curve = this->build_dubins(x0, y0, th0, aux_1.at(0), aux_1.at(1), aux_1.at(2), ksign.at(3 * i) * kmax, ksign.at(3 * i + 1) * kmax, ksign.at(3 * i + 2) * kmax);
+
+      if (Lcur < L && this->valid_curve(tmp_curve, _rrt, map))
+      {
+        best_dubins = result_d;
+        L = Lcur;
+        pidx = i;
+      }
     }
   }
-
   if (pidx >= 0)
   {
 
@@ -245,7 +253,7 @@ struct dubins_curve Dubins::dubins_shortest_path(double x0, double y0, double th
   return result;
 }
 
-std::vector<struct dubins_curve> Dubins::dubins_multi_point(double x0, double y0, double th0, double xf, double yf, double thf, std::vector<std::vector<double>> points, double kmax)
+std::vector<struct dubins_curve> Dubins::dubins_multi_point(double x0, double y0, double th0, double xf, double yf, double thf, std::vector<std::vector<double>> points, double kmax, RRT &_rrt, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
   std::vector<struct dubins_curve> curves;
   std::vector<double> known_point = {xf, yf, thf};
@@ -261,7 +269,7 @@ std::vector<struct dubins_curve> Dubins::dubins_multi_point(double x0, double y0
     for (uint deg = 0; deg < 360; deg++)
     {
       double rad = deg * M_PI / 180;
-      auto aux_curve = this->dubins_shortest_path(p.at(0), p.at(1), rad, known_point.at(0), known_point.at(1), known_point.at(2), kmax);
+      auto aux_curve = this->dubins_shortest_path(p.at(0), p.at(1), rad, known_point.at(0), known_point.at(1), known_point.at(2), kmax, _rrt, map);
       Lcur = aux_curve.L;
       if (Lcur < L)
       {
@@ -277,7 +285,23 @@ std::vector<struct dubins_curve> Dubins::dubins_multi_point(double x0, double y0
   }
 
   // insert last
-  curves.insert(curves.begin(), this->dubins_shortest_path(x0, y0, th0, known_point.at(0), known_point.at(1), known_point.at(2), kmax));
+  curves.insert(curves.begin(), this->dubins_shortest_path(x0, y0, th0, known_point.at(0), known_point.at(1), known_point.at(2), kmax, _rrt, map));
 
   return curves;
+}
+
+bool Dubins::valid_curve(struct dubins_curve curve, RRT &_rrt, boost::geometry::model::multi_polygon<polygon_t> &map)
+{
+  KDNode_t p1_0 = {curve.a1.x0, curve.a1.y0};
+  KDNode_t p1_f = {curve.a1.xf, curve.a1.yf};
+  KDNode_t p2_0 = {curve.a2.x0, curve.a2.y0};
+  KDNode_t p2_f = {curve.a2.xf, curve.a2.yf};
+  KDNode_t p3_0 = {curve.a3.x0, curve.a3.y0};
+  KDNode_t p3_f = {curve.a3.xf, curve.a3.yf};
+
+  if (_rrt.valid_segment(p1_0, p1_f, map) && _rrt.valid_segment(p2_0, p2_f, map) && _rrt.valid_segment(p3_0, p3_f, map))
+  {
+    return true;
+  }
+  return false;
 }
