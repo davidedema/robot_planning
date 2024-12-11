@@ -229,9 +229,8 @@ struct dubins_curve Dubins::dubins_shortest_path(double x0, double y0, double th
     if (!(result_d.at(0) == 0 && result_d.at(1) == 0 && result_d.at(2) == 0) && Lcur < L)
     {
       best_dubins = result_d;
-      Lcur = L;
+      L = Lcur;
       pidx = i;
-      break;
     }
   }
 
