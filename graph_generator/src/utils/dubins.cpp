@@ -18,6 +18,16 @@ Dubins::~Dubins() {}
 
 double Dubins::mod2pi(double angle)
 {
+  // double out = angle;
+  // while (out < 0)
+  // {
+  //   out = out + 2 * M_PI;
+  // }
+  // while (out >= 2 * M_PI)
+  // {
+  //   out = out - 2 * M_PI;
+  // }
+  // return out;
   double result = std::fmod(angle, 2 * M_PI);
   if (result < 0)
   {
@@ -83,7 +93,7 @@ std::vector<double> Dubins::d_rsr(double sc_th0, double sc_thf, double sc_kmax)
 {
   double radious = 1 / sc_kmax;
   double c = cos(sc_th0) - cos(sc_thf);
-  double s = 2 * sc_kmax + sin(sc_th0) - sin(sc_thf);
+  double s = 2 * sc_kmax - sin(sc_th0) + sin(sc_thf);
   double temp1 = atan2(c, s);
   double sc_s1 = radious * this->mod2pi(sc_th0 - temp1);
   double temp2 = 2 + 4 * pow(sc_kmax, 2) - 2 * cos(sc_th0 - sc_thf) - 4 * sc_kmax * (sin(sc_th0) - sin(sc_thf));
@@ -99,10 +109,10 @@ std::vector<double> Dubins::d_rsr(double sc_th0, double sc_thf, double sc_kmax)
 std::vector<double> Dubins::d_lsr(double sc_th0, double sc_thf, double sc_kmax)
 {
   double radious = 1 / sc_kmax;
-  double c = cos(sc_th0) - cos(sc_thf);
-  double s = 2 * sc_kmax + sin(sc_th0) - sin(sc_thf);
+  double c = cos(sc_th0) + cos(sc_thf);
+  double s = 2 * sc_kmax + sin(sc_th0) + sin(sc_thf);
   double temp1 = atan2(-c, s);
-  double temp3 = 4 * pow(sc_kmax, 2) - 2 + 2 * cos(sc_th0 - sc_thf) + 4 * sc_kmax * (sin(sc_th0) - sin(sc_thf));
+  double temp3 = 4 * pow(sc_kmax, 2) - 2 + 2 * cos(sc_th0 - sc_thf) + 4 * sc_kmax * (sin(sc_th0) + sin(sc_thf));
   if (temp3 < 0)
   {
     return {0, 0, 0};
@@ -117,18 +127,18 @@ std::vector<double> Dubins::d_lsr(double sc_th0, double sc_thf, double sc_kmax)
 std::vector<double> Dubins::d_rsl(double sc_th0, double sc_thf, double sc_kmax)
 {
   double radious = 1 / sc_kmax;
-  double c = cos(sc_th0) - cos(sc_thf);
+  double c = cos(sc_th0) + cos(sc_thf);
   double s = 2 * sc_kmax - sin(sc_th0) - sin(sc_thf);
-  double temp1 = atan2(-c, s);
-  double temp3 = 4 * pow(sc_kmax, 2) - 2 + 2 * cos(sc_th0 - sc_thf) - 4 * sc_kmax * (sin(sc_th0) - sin(sc_thf));
+  double temp1 = atan2(c, s);
+  double temp3 = 4 * pow(sc_kmax, 2) - 2 + 2 * cos(sc_th0 - sc_thf) - 4 * sc_kmax * (sin(sc_th0) + sin(sc_thf));
   if (temp3 < 0)
   {
     return {0, 0, 0};
   }
   double sc_s2 = radious * sqrt(temp3);
-  double temp2 = -atan2(2, sc_s2 * sc_kmax);
-  double sc_s1 = radious * this->mod2pi(temp1 - temp2 + sc_th0);
-  double sc_s3 = radious * this->mod2pi(temp1 - temp2 + sc_thf);
+  double temp2 = atan2(2, sc_s2 * sc_kmax);
+  double sc_s1 = radious * this->mod2pi(sc_th0 - temp1 + temp2);
+  double sc_s3 = radious * this->mod2pi(sc_thf - temp1 + temp2);
   return {sc_s1, sc_s2, sc_s3};
 }
 
@@ -137,7 +147,7 @@ std::vector<double> Dubins::d_rlr(double sc_th0, double sc_thf, double sc_kmax)
   double radious = 1 / sc_kmax;
   double c = cos(sc_th0) - cos(sc_thf);
   double s = 2 * sc_kmax - sin(sc_th0) + sin(sc_thf);
-  double temp1 = atan2(-c, s);
+  double temp1 = atan2(c, s);
   double temp2 = 0.125 * (6 - 4 * pow(sc_kmax, 2) + 2 * cos(sc_th0 - sc_thf) + 4 * sc_kmax * (sin(sc_th0) - sin(sc_thf)));
   if (temp2 < 0)
   {
@@ -154,8 +164,8 @@ std::vector<double> Dubins::d_lrl(double sc_th0, double sc_thf, double sc_kmax)
   double radious = 1 / sc_kmax;
   double c = cos(sc_thf) - cos(sc_th0);
   double s = 2 * sc_kmax + sin(sc_th0) - sin(sc_thf);
-  double temp1 = atan2(-c, s);
-  double temp2 = 0.125 * (6 - 4 * pow(sc_kmax, 2) + 2 * cos(sc_th0 - sc_thf) + 4 * sc_kmax * (sin(sc_th0) - sin(sc_thf)));
+  double temp1 = atan2(c, s);
+  double temp2 = 0.125 * (6 - 4 * pow(sc_kmax, 2) + 2 * cos(sc_th0 - sc_thf) - 4 * sc_kmax * (sin(sc_th0) - sin(sc_thf)));
   if (temp2 < 0)
   {
     return {0, 0, 0};
