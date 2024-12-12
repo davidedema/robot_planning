@@ -271,14 +271,14 @@ public:
   /**
    * @brief Get the Real Sense Odometry Data object
    * 
-   * @param odomData 
+   * @param realSenseOdomData 
    * @return true the real sense odometry data is available.
    * @return false the real sense odometry data has expired.
    */
-  bool getRealSenseOdomData(RobotStatus::OdometryData &odomData){
+  bool getRealSenseOdomData(RobotStatus::OdometryData &realSenseOdomData){
     std::unique_lock<std::mutex> lock(realSenseOdomMTX);
     double currTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-    odomData = this->realSenseOdom;
+    realSenseOdomData = this->realSenseOdom;
     if(currTime - this->realSenseOdom.last_odom_update < LIDAR_TIMEOUT){
       return true;
     }else{

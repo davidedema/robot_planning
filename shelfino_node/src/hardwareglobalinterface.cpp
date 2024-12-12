@@ -358,7 +358,10 @@ void HardwareGlobalInterface::updateOdometryV(double current_time, double vl, do
   bool firstTime = !wsLeft.init;
   double seconds_since_last_update = (current_time - wsLeft.lastTime)/1000;
 
-  if(seconds_since_last_update < 0.005) return;
+  if(seconds_since_last_update < 0.005) {
+    std::cout << "updateOdometryV quit because too early" << std::endl;
+    return;
+  }
 
   if (!wsLeft.init) {
     wsLeft.dTick = 0;
@@ -387,7 +390,9 @@ void HardwareGlobalInterface::updateOdometryV(double current_time, double vl, do
     wsRight.lastTime = current_time;
   }
   
-  if (firstTime) return;
+  if (firstTime) {
+    return;
+  };
   
   double ticks_l = wsLeft.dTick;
   double ticks_r = wsRight.dTick;
@@ -402,7 +407,9 @@ void HardwareGlobalInterface::updateOdometryOmega(double current_time, std::vect
   double seconds_since_last_update = (current_time - odomData.last_odom_update)/1000;
   odomData.last_odom_update = current_time;
 
-  if(seconds_since_last_update < 0.005) return;
+  if(seconds_since_last_update < 0.005) {
+    return;
+  };
 
   std::vector<double> angles = ToEulerAngles(orientation);  
   angles.at(2) = -angles.at(2); // flip sign
@@ -891,8 +898,6 @@ void HardwareGlobalInterface::setDeviceMode(int deviceMode){
 
 void HardwareGlobalInterface::vehicleMove(float vel, float omega){
 
-  std::cout << "Sending cmd_vel " << vel << " " << omega << std::endl;
-
   ZMQCommon::RequesterSimple::status_t req_status;
   nlohmann::json j_req;
   j_req["cmd"] = std::string("move");
@@ -905,9 +910,7 @@ void HardwareGlobalInterface::vehicleMove(float vel, float omega){
     try{nlohmann::json j_resp = nlohmann::json::parse(response);
 
       if(j_resp.at("ack") == "true"){
-        std::cout << "Received ACK" << std::endl;
       }else{
-        std::cout << "Did not received ACK?" << std::endl;
       }
     }catch(std::exception &e){
       std::cout << "VEHICLE_MOVE" << std::endl;

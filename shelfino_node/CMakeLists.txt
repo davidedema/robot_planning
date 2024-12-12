@@ -27,6 +27,7 @@ include_directories(
 
 add_executable(shelfino_node 
   src/shelfino_hw_publisher.cpp
+  src/changing.cpp
   src/hardwareglobalinterface.cpp
   src/Subscriber.cpp
   src/Publisher.cpp
