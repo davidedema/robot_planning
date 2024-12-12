@@ -14,6 +14,8 @@ find_package(geometry_msgs REQUIRED)
 find_package(obstacles_msgs REQUIRED)
 find_package(Boost 1.74)
 find_package(visualization_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
 
 # add_executable(graph_generator src/graph_node.cpp)
 # ament_target_dependencies(graph_generator rclcpp geometry_msgs obstacles_msgs)
@@ -40,6 +42,8 @@ ament_target_dependencies(test_graph_generator
   geometry_msgs
   visualization_msgs
   obstacles_msgs
+  tf2
+  tf2_ros
 )
 
 target_link_libraries(test_graph_generator Boost::headers)

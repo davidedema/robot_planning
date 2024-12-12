@@ -330,7 +330,6 @@ int main(int argc, char **argv)
   KDNode_t start = {m->get_pose1().at(0), m->get_pose1().at(1)};
   KDNode_t goal = {m->get_gate().at(0), m->get_gate().at(1)};
   vector<KDNode_t> path;
-
   _rrt.set_problem(start, goal); // Dubins d({0.0, 0.0}, {0.0, 0.0}, kmax);
 
   for (uint i = 1; i < 3000; i++)
@@ -338,12 +337,12 @@ int main(int argc, char **argv)
     auto point = _rrt.get_random_point(i, map);
     auto nearest = _rrt.get_nn(point, 1);
     auto new_point = _rrt.next_point(point, nearest, map);
-    auto best_one = _rrt.get_best_neighbor(new_point, nearest, 2, map);
+    auto best_one = _rrt.get_best_neighbor(new_point, nearest, 0.5, map);
     if (_rrt.add_edge(new_point, best_one, map))
     {
       sampled_points.push_back(new_point);
     }
-    _rrt.rewire(new_point, 2, map);
+    _rrt.rewire(new_point, 0.5, map);
     if (_rrt.is_goal(new_point))
     {
       path = _rrt.get_path(new_point);
@@ -392,7 +391,7 @@ int main(int argc, char **argv)
     cout << p.at(0) << "  " << p.at(1) << endl;
   }
 
-  auto dubins_curves = d.dubins_multi_point(start.at(0), start.at(1), -acos(m->get_pose1().at(5))*2, goal.at(0), goal.at(1), -acos(m->get_gate().at(5))*2, path_points2, kmax, _rrt, map);
+  auto dubins_curves = d.dubins_multi_point(start.at(0), start.at(1), m->get_pose1().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), path_points2, kmax, _rrt, map);
   node->setDubinsCurves(dubins_curves);
 
   // Keep the node alive

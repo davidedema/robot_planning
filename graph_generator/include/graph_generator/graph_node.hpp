@@ -6,6 +6,8 @@
 
 
 #include "rclcpp/rclcpp.hpp"
+#include "tf2/LinearMath/Quaternion.h"
+#include "tf2/LinearMath/Matrix3x3.h"
 #include "rclcpp/qos.hpp"
 #include "obstacles_msgs/msg/obstacle_array_msg.hpp"
 #include "geometry_msgs/msg/polygon.hpp"

@@ -29,6 +29,7 @@ GraphGenerator::~GraphGenerator() {}
 
 void GraphGenerator::callback_borders(const geometry_msgs::msg::Polygon::SharedPtr msg)
 {
+  subscription_borders_.reset();
   if (!msg->points.empty())
   {
     this->set_borders(*msg);
@@ -42,6 +43,7 @@ void GraphGenerator::callback_borders(const geometry_msgs::msg::Polygon::SharedP
 
 void GraphGenerator::callback_obstacles(const obstacles_msgs::msg::ObstacleArrayMsg::SharedPtr msg)
 {
+  subscription_obstacles_.reset();
   if (!msg->obstacles.empty())
   {
     this->set_obstacles(*msg);
@@ -55,6 +57,7 @@ void GraphGenerator::callback_obstacles(const obstacles_msgs::msg::ObstacleArray
 
 void GraphGenerator::callback_gates(const geometry_msgs::msg::PoseArray::SharedPtr msg)
 {
+  subscription_gates_.reset();
   if (!msg->poses.empty())
   {
     gates_r_ = true;
@@ -68,11 +71,13 @@ void GraphGenerator::callback_gates(const geometry_msgs::msg::PoseArray::SharedP
 
 void GraphGenerator::callback_pos1(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg)
 {
+  subscription_position1_.reset();
   pos1_r_ = true;
   this->set_pos1(*msg);
 }
 void GraphGenerator::callback_pos2(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg)
 {
+  subscription_position2_.reset();
   pos2_r_ = true;
   this->set_pos2(*msg);
 }
@@ -204,18 +209,11 @@ void GraphGenerator::set_gate(const geometry_msgs::msg::PoseArray &msg)
     std::vector<double> gate;
     gate.push_back(pose.position.x);
     gate.push_back(pose.position.y);
-    gate.push_back(pose.orientation.x);
-    gate.push_back(pose.orientation.y);
-    gate.push_back(pose.orientation.z);
-    gate.push_back(pose.orientation.w);
-
-    std::cout << pose.position.x << std::endl;
-    std::cout << pose.position.y << std::endl;
-    std::cout << pose.orientation.x << std::endl;
-    std::cout << pose.orientation.y << std::endl;
-    std::cout << pose.orientation.z << std::endl;
-    std::cout << pose.orientation.w << std::endl;
-
+    tf2::Quaternion q(pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w);
+    double r, p, y;
+    tf2::Matrix3x3 m(q);
+    m.getRPY(r, p, y);
+    gate.push_back(y);
     gates.push_back(gate);
   }
 }
@@ -224,19 +222,21 @@ void GraphGenerator::set_pos1(const geometry_msgs::msg::PoseWithCovarianceStampe
 {
   pos1.push_back(msg.pose.pose.position.x);
   pos1.push_back(msg.pose.pose.position.y);
-  pos1.push_back(msg.pose.pose.orientation.x);
-  pos1.push_back(msg.pose.pose.orientation.y);
-  pos1.push_back(msg.pose.pose.orientation.z);
-  pos1.push_back(msg.pose.pose.orientation.w);
+  tf2::Quaternion q(msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w);
+  double r, p, y;
+  tf2::Matrix3x3 m(q);
+  m.getRPY(r, p, y);
+  pos1.push_back(y);
 }
 void GraphGenerator::set_pos2(const geometry_msgs::msg::PoseWithCovarianceStamped &msg)
 {
   pos2.push_back(msg.pose.pose.position.x);
   pos2.push_back(msg.pose.pose.position.y);
-  pos2.push_back(msg.pose.pose.orientation.x);
-  pos2.push_back(msg.pose.pose.orientation.y);
-  pos2.push_back(msg.pose.pose.orientation.z);
-  pos2.push_back(msg.pose.pose.orientation.w);
+  tf2::Quaternion q(msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w);
+  double r, p, y;
+  tf2::Matrix3x3 m(q);
+  m.getRPY(r, p, y);
+  pos2.push_back(y);
 }
 
 pose_t GraphGenerator::get_gate()

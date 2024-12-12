@@ -208,7 +208,7 @@ KDNode_t RRT::get_nn(KDNode_t &sampled_point, int n_k)
 
 bool RRT::is_goal(KDNode_t &point)
 {
-  constexpr double goal_radius = 0.5;
+  double goal_radius = 0.85;
   double dx = point.at(0) - goal.at(0);
   double dy = point.at(1) - goal.at(1);
 
