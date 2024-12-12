@@ -239,6 +239,8 @@ private:
   int timer_interval_ms_;
 };
 
+
+
 int main(int argc, char **argv)
 {
 
@@ -307,7 +309,7 @@ int main(int argc, char **argv)
   auto m = std::make_shared<GraphGenerator>();
 
   RCLCPP_INFO(m->get_logger(), "Waiting for obstacles, borders and gates...");
-  while (!m->obstacles_r_ || !m->borders_r_)
+  while (!m->obstacles_r_ || !m->borders_r_ || !m->pos1_r_)
   {
     rclcpp::spin_some(m->get_node_base_interface());
     rclcpp::sleep_for(std::chrono::milliseconds(100));
@@ -325,8 +327,8 @@ int main(int argc, char **argv)
   std::vector<std::vector<double>> path_points2;
 
   // Set start and goal
-  KDNode_t start = {5, 5};
-  KDNode_t goal = {-6.1, 7};
+  KDNode_t start = {m->get_pose1().at(0), m->get_pose1().at(1)};
+  KDNode_t goal = {m->get_gate().at(0), m->get_gate().at(1)};
   vector<KDNode_t> path;
 
   _rrt.set_problem(start, goal); // Dubins d({0.0, 0.0}, {0.0, 0.0}, kmax);
@@ -390,10 +392,10 @@ int main(int argc, char **argv)
     cout << p.at(0) << "  " << p.at(1) << endl;
   }
 
-  auto dubins_curves = d.dubins_multi_point(start.at(0), start.at(1), -M_PI / 2, goal.at(0), goal.at(1), -M_PI / 2, path_points2, kmax, _rrt, map);
+  auto dubins_curves = d.dubins_multi_point(start.at(0), start.at(1), -acos(m->get_pose1().at(5))*2, goal.at(0), goal.at(1), -acos(m->get_gate().at(5))*2, path_points2, kmax, _rrt, map);
   node->setDubinsCurves(dubins_curves);
 
-  // // Keep the node alive
+  // Keep the node alive
   rclcpp::spin(node);
 
   rclcpp::shutdown();

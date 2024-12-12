@@ -8,16 +8,21 @@ GraphGenerator::GraphGenerator() : Node("GraphGenerator")
   borders_r_ = false;
   obstacles_r_ = false;
   gates_r_ = false;
+  pos1_r_ = false;
+  pos2_r_ = false;
 
   const auto qos = rclcpp::QoS(rclcpp::KeepLast(1), qos_profile_custom);
 
-  subsctiption_borders_ = this->create_subscription<geometry_msgs::msg::Polygon>(
+  subscription_borders_ = this->create_subscription<geometry_msgs::msg::Polygon>(
       "/map_borders", qos, std::bind(&GraphGenerator::callback_borders, this, std::placeholders::_1));
-
-  subsctiption_obstacles_ = this->create_subscription<obstacles_msgs::msg::ObstacleArrayMsg>(
+  subscription_obstacles_ = this->create_subscription<obstacles_msgs::msg::ObstacleArrayMsg>(
       "/obstacles", qos, std::bind(&GraphGenerator::callback_obstacles, this, std::placeholders::_1));
-  subsctiption_gates_ = this->create_subscription<geometry_msgs::msg::PoseArray>(
-      "/gates_position", qos, std::bind(&GraphGenerator::callback_gates, this, std::placeholders::_1));
+  subscription_gates_ = this->create_subscription<geometry_msgs::msg::PoseArray>(
+      "/gates", qos, std::bind(&GraphGenerator::callback_gates, this, std::placeholders::_1));
+  subscription_position1_ = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
+      "/shelfino1/amcl_pose", qos, std::bind(&GraphGenerator::callback_pos1, this, std::placeholders::_1));
+  subscription_position2_ = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
+      "/shelfino3/amcl_pose", qos, std::bind(&GraphGenerator::callback_pos2, this, std::placeholders::_1));
 }
 
 GraphGenerator::~GraphGenerator() {}
@@ -59,6 +64,26 @@ void GraphGenerator::callback_gates(const geometry_msgs::msg::PoseArray::SharedP
   {
     RCLCPP_WARN(this->get_logger(), "Received an empty pose array message!");
   }
+}
+
+void GraphGenerator::callback_pos1(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg)
+{
+  pos1_r_ = true;
+  this->set_pos1(*msg);
+}
+void GraphGenerator::callback_pos2(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg)
+{
+  pos2_r_ = true;
+  this->set_pos2(*msg);
+}
+
+pose_t GraphGenerator::get_pose1()
+{
+  return pos1;
+}
+pose_t GraphGenerator::get_pose2()
+{
+  return pos2;
 }
 
 void GraphGenerator::set_obstacles(const obstacles_msgs::msg::ObstacleArrayMsg &msg)
@@ -176,18 +201,47 @@ void GraphGenerator::set_gate(const geometry_msgs::msg::PoseArray &msg)
 {
   for (const auto &pose : msg.poses)
   {
+    std::vector<double> gate;
     gate.push_back(pose.position.x);
     gate.push_back(pose.position.y);
     gate.push_back(pose.orientation.x);
     gate.push_back(pose.orientation.y);
     gate.push_back(pose.orientation.z);
     gate.push_back(pose.orientation.w);
+
+    std::cout << pose.position.x << std::endl;
+    std::cout << pose.position.y << std::endl;
+    std::cout << pose.orientation.x << std::endl;
+    std::cout << pose.orientation.y << std::endl;
+    std::cout << pose.orientation.z << std::endl;
+    std::cout << pose.orientation.w << std::endl;
+
+    gates.push_back(gate);
   }
+}
+
+void GraphGenerator::set_pos1(const geometry_msgs::msg::PoseWithCovarianceStamped &msg)
+{
+  pos1.push_back(msg.pose.pose.position.x);
+  pos1.push_back(msg.pose.pose.position.y);
+  pos1.push_back(msg.pose.pose.orientation.x);
+  pos1.push_back(msg.pose.pose.orientation.y);
+  pos1.push_back(msg.pose.pose.orientation.z);
+  pos1.push_back(msg.pose.pose.orientation.w);
+}
+void GraphGenerator::set_pos2(const geometry_msgs::msg::PoseWithCovarianceStamped &msg)
+{
+  pos2.push_back(msg.pose.pose.position.x);
+  pos2.push_back(msg.pose.pose.position.y);
+  pos2.push_back(msg.pose.pose.orientation.x);
+  pos2.push_back(msg.pose.pose.orientation.y);
+  pos2.push_back(msg.pose.pose.orientation.z);
+  pos2.push_back(msg.pose.pose.orientation.w);
 }
 
 pose_t GraphGenerator::get_gate()
 {
-  return gate;
+  return gates.at(0);
 }
 
 boost::geometry::model::multi_polygon<polygon_t> GraphGenerator::get_map()
