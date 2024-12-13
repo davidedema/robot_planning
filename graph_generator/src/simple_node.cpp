@@ -11,6 +11,8 @@
 
 #include "graph_generator/utils/dubins.hpp"
 
+#include <nav_msgs/msg/path.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <visualization_msgs/msg/marker.hpp>
 #include <geometry_msgs/msg/point.hpp>
@@ -36,6 +38,8 @@ public:
     dubins_curve_pub_ = this->create_publisher<visualization_msgs::msg::Marker>(
         "dubins_curve_marker", rclcpp::QoS(10));
 
+    nav2_path_pub_ = this->create_publisher<nav_msgs::msg::Path>(
+        "shelfino1/plan1", rclcpp::QoS(10));
     // Timer to periodically check for subscribers and publish
     timer_ = this->create_wall_timer(
         std::chrono::milliseconds(timer_interval_ms_),
@@ -57,6 +61,10 @@ public:
   void setDubinsCurves(const std::vector<dubins_curve> &curves)
   {
     dubins_curves_ = curves;
+  }
+  void send_nav2(const nav_msgs::msg::Path &path)
+  {
+    nav2_path_pub_->publish(path);
   }
 
 private:
@@ -234,12 +242,73 @@ private:
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr sampled_points_pub_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr path_pub_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr dubins_curve_pub_;
-
+  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr nav2_path_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
   int timer_interval_ms_;
 };
 
+nav_msgs::msg::Path convertDubinsPathToNavPath(const std::vector<dubins_curve> &dubins_curves)
+{
+  nav_msgs::msg::Path path_msg;
+  path_msg.header.frame_id = "map"; // Adjust the frame_id to your TF setup
+  path_msg.header.stamp = rclcpp::Clock().now();
 
+  for (const auto &curve : dubins_curves)
+  {
+    auto add_arc_points_to_path = [&](const dubins_arc &arc)
+    {
+      double step = 0.1; // Step size for sampling points along the arc
+      double theta = arc.th0;
+
+      if (std::abs(arc.k) < 1e-6)
+      {
+        // Straight-line case
+        for (double s = 0; s <= arc.L; s += step)
+        {
+          geometry_msgs::msg::PoseStamped pose;
+          pose.header = path_msg.header;
+          pose.pose.position.x = arc.x0 + s * cos(theta);
+          pose.pose.position.y = arc.y0 + s * sin(theta);
+          pose.pose.position.z = 0.0;
+          tf2::Quaternion quat(0, 0, sin(theta / 2), cos(theta / 2));
+          pose.pose.orientation.x = quat.x();
+          pose.pose.orientation.y = quat.y();
+          pose.pose.orientation.z = quat.z();
+          pose.pose.orientation.w = quat.w();
+
+          path_msg.poses.push_back(pose);
+        }
+      }
+      else
+      {
+        // Curved case
+        double radius = 1.0 / arc.k;
+        for (double s = 0; s <= arc.L; s += step)
+        {
+          geometry_msgs::msg::PoseStamped pose;
+          pose.header = path_msg.header;
+          pose.pose.position.x = arc.x0 + radius * (sin(theta + arc.k * s) - sin(theta));
+          pose.pose.position.y = arc.y0 + radius * (cos(theta) - cos(theta + arc.k * s));
+          pose.pose.position.z = 0.0;
+          tf2::Quaternion quat(0, 0, sin(theta / 2), cos(theta / 2));
+          pose.pose.orientation.x = quat.x();
+          pose.pose.orientation.y = quat.y();
+          pose.pose.orientation.z = quat.z();
+          pose.pose.orientation.w = quat.w();
+
+          path_msg.poses.push_back(pose);
+        }
+      }
+    };
+
+    // Add points from all arcs in the Dubins curve
+    add_arc_points_to_path(curve.a1);
+    add_arc_points_to_path(curve.a2);
+    add_arc_points_to_path(curve.a3);
+  }
+
+  return path_msg;
+}
 
 int main(int argc, char **argv)
 {
@@ -393,6 +462,10 @@ int main(int argc, char **argv)
 
   auto dubins_curves = d.dubins_multi_point(start.at(0), start.at(1), m->get_pose1().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), path_points2, kmax, _rrt, map);
   node->setDubinsCurves(dubins_curves);
+
+  auto nav2_path = convertDubinsPathToNavPath(dubins_curves);
+
+  node->send_nav2(nav2_path);
 
   // Keep the node alive
   rclcpp::spin(node);
