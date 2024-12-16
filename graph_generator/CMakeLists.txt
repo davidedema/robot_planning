@@ -31,15 +31,15 @@ find_package(tf2_ros REQUIRED)
 #### GRAPH_GEN ####
 ###################
 
-add_executable(test_graph_generator 
-  src/simple_node.cpp
+add_executable(entrypoint 
+  src/entrypoint.cpp
   src/graph_node.cpp
   src/sampling_based/utils/rrt.cpp
   src/sampling_based/utils/kdtree.cpp
   src/utils/dubins.cpp
   )
 
-ament_target_dependencies(test_graph_generator
+ament_target_dependencies(entrypoint
   rclcpp
   geometry_msgs
   visualization_msgs
@@ -49,12 +49,12 @@ ament_target_dependencies(test_graph_generator
   nav2_msgs
   )
   
-  target_link_libraries(test_graph_generator Boost::headers)
-  target_include_directories(test_graph_generator PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+  target_link_libraries(entrypoint Boost::headers)
+  target_include_directories(entrypoint PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
   
   
   install(TARGETS
-  test_graph_generator
+  entrypoint
   DESTINATION lib/${PROJECT_NAME}
   )
   

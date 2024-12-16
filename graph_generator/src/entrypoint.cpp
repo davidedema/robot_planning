@@ -318,67 +318,13 @@ int main(int argc, char **argv)
   // Create the node
   auto node = std::make_shared<PointMarkerNode>();
 
-  // test dubins
-
-  // std::vector<double> start = {0, 0, 2.09};
-  // std::vector<double> end = {4, 0, -1.04};
-  // std::vector<std::vector<double>> points = {{1, 0}, {3, 0}};
   double kmax = 2;
-
-  // Dubins d({0.0, 0.0}, {0.0, 0.0}, kmax);
-  // auto dubins_curve = d.dubins_shortest_path(start.at(0), start.at(1), start.at(2), end.at(0), end.at(1), end.at(2), kmax);
-
-  // // auto dubins_curves = d.dubins_multi_point(start.at(0), start.at(1), start.at(2), end.at(0), end.at(1), end.at(2), points, kmax);
-  // cout << "finished" << endl;
-  // for (const auto &curve : {dubins_curve})
-  // {
-  //   cout << "A1" << endl;
-  //   cout << " x0 " << curve.a1.x0 << endl;
-  //   cout << " y0 " << curve.a1.y0 << endl;
-  //   cout << " th0 " << curve.a1.th0 << endl;
-  //   cout << " k " << curve.a1.k << endl;
-  //   cout << " L " << curve.a1.L << endl;
-  //   cout << " xf " << curve.a1.xf << endl;
-  //   cout << " yf " << curve.a1.yf << endl;
-  //   cout << " thf " << curve.a1.thf << endl;
-
-  //   cout << "A2" << endl;
-  //   cout << " x0 " << curve.a2.x0 << endl;
-  //   cout << " y0 " << curve.a2.y0 << endl;
-  //   cout << " th0 " << curve.a2.th0 << endl;
-  //   cout << " k " << curve.a2.k << endl;
-  //   cout << " L " << curve.a2.L << endl;
-  //   cout << " xf " << curve.a2.xf << endl;
-  //   cout << " yf " << curve.a2.yf << endl;
-  //   cout << " thf " << curve.a2.thf << endl;
-
-  //   cout << "A3" << endl;
-  //   cout << " x0 " << curve.a3.x0 << endl;
-  //   cout << " y0 " << curve.a3.y0 << endl;
-  //   cout << " th0 " << curve.a3.th0 << endl;
-  //   cout << " k " << curve.a3.k << endl;
-  //   cout << " L " << curve.a3.L << endl;
-  //   cout << " xf " << curve.a3.xf << endl;
-  //   cout << " yf " << curve.a3.yf << endl;
-  //   cout << " thf " << curve.a3.thf << endl;
-  //   cout << curve.L << endl;
-  // }
-
-  // std::vector<struct dubins_curve> a;
-  // a.push_back(dubins_curve);
-
-  // node->setDubinsCurves(a);
-
-  // rclcpp::init(argc, argv);
-
-  // // Create the node
-  // auto node = std::make_shared<PointMarkerNode>();
 
   // Monitor execution time
   auto m = std::make_shared<GraphGenerator>();
 
   RCLCPP_INFO(m->get_logger(), "Waiting for obstacles, borders and gates...");
-  while (!m->obstacles_r_ || !m->borders_r_ || !m->pos1_r_)
+  while (!m->obstacles_r_ || !m->borders_r_ || !m->gates_r_ || !m->pos1_r_ || !m->pos2_r_)
   {
     rclcpp::spin_some(m->get_node_base_interface());
     rclcpp::sleep_for(std::chrono::milliseconds(100));
@@ -395,11 +341,13 @@ int main(int argc, char **argv)
   std::vector<std::vector<double>> path_points;
   std::vector<std::vector<double>> path_points2;
 
-  // Set start and goal
-  KDNode_t start = {m->get_pose1().at(0), m->get_pose1().at(1)};
+  // Pose for shelfino1
+  KDNode_t start_shelfino1 = {m->get_pose1().at(0), m->get_pose1().at(1)};
   KDNode_t goal = {m->get_gate().at(0), m->get_gate().at(1)};
   vector<KDNode_t> path;
-  _rrt.set_problem(start, goal); // Dubins d({0.0, 0.0}, {0.0, 0.0}, kmax);
+  _rrt.set_problem(start_shelfino1, goal); 
+
+  // Main tree -> created from shelfino1
 
   for (uint i = 1; i < 3000; i++)
   {
@@ -418,6 +366,25 @@ int main(int argc, char **argv)
       // break;
     }
   }
+
+  // Pose for shelfino 2
+  KDNode_t start_shelfino2 = {m->get_pose2().at(0), m->get_pose2().at(1)};
+
+  // Add shelfino 2 start_shelfino1 node to the graph
+  auto nearest2 = _rrt.get_nn(start_shelfino2, 1);
+  if (_rrt.add_edge(start_shelfino2, nearest2, map))
+  {
+    RCLCPP_INFO(m->get_logger(), "\033[1;32m Added start shelfino 2\033[0m");
+  }
+  // Pose for shelfino 3
+  // KDNode_t start_shelfino3 = {m->get_pose3().at(0), m->get_pose3().at(1)};
+
+  // // Add shelfino 3 start_shelfino1 node to the graph
+  // auto nearest3 = _rrt.get_nn(start_shelfino3, 1);
+  // if (_rrt.add_edge(start_shelfino3, nearest3, map))
+  // {
+  //   RCLCPP_INFO(m->get_logger(), "\033[1;32m Added start shelfino 3\033[0m");
+  // }
   // Convert path to 2D points
   for (const auto &p : path)
   {
@@ -460,7 +427,7 @@ int main(int argc, char **argv)
     cout << p.at(0) << "  " << p.at(1) << endl;
   }
 
-  auto dubins_curves = d.dubins_multi_point(start.at(0), start.at(1), m->get_pose1().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), path_points2, kmax, _rrt, map);
+  auto dubins_curves = d.dubins_multi_point(start_shelfino1.at(0), start_shelfino1.at(1), m->get_pose1().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), path_points2, kmax, _rrt, map);
   node->setDubinsCurves(dubins_curves);
 
   auto nav2_path = convertDubinsPathToNavPath(dubins_curves);

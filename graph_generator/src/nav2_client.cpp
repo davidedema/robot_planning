@@ -51,13 +51,13 @@ public:
   }
   rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr _path_subscription1;
   rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr _path_subscription2;
-  geometry_msgs::msg::TransformStamped t;
 
-  rclcpp::Subscription<geometry_msgs::msg::PoseArray>::SharedPtr subscription1;
   rclcpp_action::Client<FollowPath>::SharedPtr client1_ptr_;
   rclcpp_action::Client<FollowPath>::SharedPtr client2_ptr_;
+
   nav_msgs::msg::Path full_path1;
   nav_msgs::msg::Path full_path2;
+
   bool waypoints1_received = false;
   bool waypoints2_received = false;
 
@@ -91,7 +91,8 @@ int main(int argc, char *argv[])
   auto node = std::make_shared<PathPublisher>();
   while (rclcpp::ok())
   {
-    if (node->waypoints1_received && node->waypoints2_received)
+    if (node->waypoints1_received)
+    // if (node->waypoints1_received && node->waypoints2_received)
     {
       std::cout << "\033[1;32mSending paths to controllers\033[0m" << std::endl;
       // nav_msgs::msg::Path full_path1;
@@ -132,11 +133,11 @@ int main(int argc, char *argv[])
       goal1_msg.controller_id = "FollowPath";
       goal2_msg.controller_id = "FollowPath";
       node->client1_ptr_->async_send_goal(goal1_msg);
-      node->client2_ptr_->async_send_goal(goal2_msg);
+      // node->client2_ptr_->async_send_goal(goal2_msg);
       rclcpp::sleep_for(std::chrono::milliseconds(500));
       // ensure that the path is sent
       node->client1_ptr_->async_send_goal(goal1_msg);
-      node->client2_ptr_->async_send_goal(goal2_msg);
+      // node->client2_ptr_->async_send_goal(goal2_msg);
       node->waypoints1_received = false;
       node->waypoints2_received = false;
     }
