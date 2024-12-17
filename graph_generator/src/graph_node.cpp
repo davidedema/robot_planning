@@ -22,7 +22,7 @@ GraphGenerator::GraphGenerator() : Node("GraphGenerator")
   subscription_position1_ = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
       "/shelfino1/amcl_pose", qos, std::bind(&GraphGenerator::callback_pos1, this, std::placeholders::_1));
   subscription_position2_ = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
-      "/shelfino3/amcl_pose", qos, std::bind(&GraphGenerator::callback_pos2, this, std::placeholders::_1));
+      "/shelfino2/amcl_pose", qos, std::bind(&GraphGenerator::callback_pos2, this, std::placeholders::_1));
 }
 
 GraphGenerator::~GraphGenerator() {}
@@ -177,7 +177,8 @@ void GraphGenerator::set_borders(const geometry_msgs::msg::Polygon &msg)
 {
   for (auto const &point : msg.points)
   {
-    this->map_borders.outer().insert(this->map_borders.outer().begin(), point_t(point.x, point.y));
+    // this->map_borders.outer().insert(this->map_borders.outer().begin(), point_t(point.x, point.y));
+    this->map_borders.outer().push_back(point_t(point.x, point.y));
   }
 
   map_borders.outer().push_back(map_borders.outer().front());
@@ -195,6 +196,11 @@ void GraphGenerator::set_borders(const geometry_msgs::msg::Polygon &msg)
                           join_strategy,
                           end_strategy,
                           circle_strategy);
+
+  if (inflated_borders.empty())
+  {
+    std::cerr << "inflated_borders is empty or not initialized!" << std::endl;
+  }
 }
 
 polygon_t GraphGenerator::get_borders()
@@ -248,10 +254,14 @@ boost::geometry::model::multi_polygon<polygon_t> GraphGenerator::get_map()
 {
   if (!is_map_created)
   {
-    // Copy the outer borders from inflated_borders into map
     for (const auto &polygon : inflated_borders)
     {
+      std::cout << "HERE" << std::endl;
       polygon_t new_polygon;
+      for (const auto &p : polygon.outer())
+      {
+        std::cout << boost::geometry::get<0>(p) << "  " << boost::geometry::get<1>(p) << std::endl;
+      }
 
       // Copy the exterior ring of each polygon in inflated_borders to a new polygon
       for (const auto &point : boost::geometry::exterior_ring(polygon))
