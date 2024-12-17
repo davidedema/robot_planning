@@ -18,16 +18,6 @@ Dubins::~Dubins() {}
 
 double Dubins::mod2pi(double angle)
 {
-  // double out = angle;
-  // while (out < 0)
-  // {
-  //   out = out + 2 * M_PI;
-  // }
-  // while (out >= 2 * M_PI)
-  // {
-  //   out = out - 2 * M_PI;
-  // }
-  // return out;
   double result = std::fmod(angle, 2 * M_PI);
   if (result < 0)
   {
