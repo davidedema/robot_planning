@@ -71,6 +71,7 @@ public:
   void add_kd_node(KDNode_t &node);
   bool are_nodes_equal(const KDNode_t &a, const KDNode_t &b);
   bool add_edge(KDNode_t &new_node, KDNode_t &nearest_node, boost::geometry::model::multi_polygon<polygon_t> &map);
+  bool attach_node(KDNode_t &new_node, KDNode_t &nearest_node, boost::geometry::model::multi_polygon<polygon_t> &map);
   bool add_node(KDNode_t &new_node);
   bool valid_point(KDNode_t &result, boost::geometry::model::multi_polygon<polygon_t> &map);
   bool valid_segment(KDNode_t &start, KDNode_t &end, boost::geometry::model::multi_polygon<polygon_t> &map);

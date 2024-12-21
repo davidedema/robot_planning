@@ -117,6 +117,30 @@ bool RRT::add_edge(KDNode_t &new_node, KDNode_t &nearest_node, boost::geometry::
   }
   return false;
 }
+
+bool RRT::attach_node(KDNode_t &new_node, KDNode_t &nearest_node, boost::geometry::model::multi_polygon<polygon_t> &map)
+{
+  //  add path between new_node and nearest_node
+  //! if the path and the points are inside the polygon
+  if (valid_segment(new_node, nearest_node, map))
+  {
+    auto v_new = boost::add_vertex(g);
+    g[v_new].node = new_node;
+    g[v_new].parents.push_back(new_node);
+    g[v_new].childs.push_back(nearest_node);
+    this->graph_lookup[new_node] = v_new;
+    auto v_child = this->graph_lookup[nearest_node];
+    g[v_new].cost = 0;
+    g[v_new].l2_dist_h = sqrt(pow(new_node.at(0) - goal.at(0), 2) + pow(new_node.at(1) - goal.at(1), 2));
+    g[v_child].parents.push_back(new_node);
+    boost::add_edge(v_child, v_new, g);
+    //  update the graph and KDTree
+    this->add_kd_node(new_node);
+    return true;
+  }
+  return false;
+}
+
 bool RRT::add_node(KDNode_t &new_node)
 {
   auto v_new = boost::add_vertex(g);

@@ -29,6 +29,8 @@ plan_t CBS::astar_search(KDNode_t &start, KDNode_t &goal)
   std::vector<KDNode_t> open;                           // open list
   std::vector<KDNode_t> close;                          // closed list
 
+  std::cout << "THE GOAL SPECIFIED IS: " << goal.at(0) << "  " << goal.at(1) << std::endl;
+
   open.push_back(start); // init open list
   cost_lookup[start] = 0;
 
@@ -38,20 +40,24 @@ plan_t CBS::astar_search(KDNode_t &start, KDNode_t &goal)
     // Take node with least f from open list
     auto current_it = open.begin();
     auto current = *current_it;
-
     for (auto it = open.begin(); it != open.end(); it++)
     {
       auto node = *it;
+      std::cout << "Possible node: ";
+      std::cout << node.at(0) << "  " << node.at(1);
+      std::cout << " with total cost: " << this->get_total_cost(node) << std::endl;
       if (this->get_total_cost(node) <= this->get_total_cost(current))
       {
         current = node;
         current_it = it;
       }
     }
-
+    std::cout << "\tCURRENT NODE IS: ";
+    std::cout << current.at(0) << "  " << current.at(1) << std::endl;
+    std::cout << "\tWITH TOTAL COST: " << this->get_total_cost(current) << std::endl;
     // If current is goal, reconstruct path and return
     if (current == goal)
-    {
+    { 
       // Reconstruct path from goal to start
       while (current != start)
       {
@@ -73,7 +79,8 @@ plan_t CBS::astar_search(KDNode_t &start, KDNode_t &goal)
          child_it++)
     {
       auto child = *child_it;
-
+      std::cout << "\t\t CHILD NODE IS: ";
+      std::cout << "\t\t" << child.at(0) << "  " << child.at(1) << std::endl;
       // Skip if child is in the closed list
       if (std::find(close.begin(), close.end(), child) != close.end())
       {
