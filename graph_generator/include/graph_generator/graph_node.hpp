@@ -19,6 +19,10 @@
 
 typedef boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> point_t;
 typedef boost::geometry::model::polygon<point_t> polygon_t;
+
+typedef boost::geometry::model::d2::point_xy<double> point_xy_t;
+typedef boost::geometry::model::polygon<point_xy_t> polygon_xy_t;
+
 typedef std::vector<double> pose_t;
 
 static const rmw_qos_profile_t qos_profile_custom = {

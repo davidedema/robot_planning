@@ -17,7 +17,24 @@ find_package(visualization_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 
-# add_executable(graph_generator src/graph_node.cpp)
+add_executable(test_graph_generator
+  src/simple_node.cpp
+  src/graph_node.cpp
+  src/sampling_based/utils/rrt.cpp
+  src/sampling_based/utils/kdtree.cpp
+  src/utils/dubins.cpp
+  )
+
+
+add_executable(test_shortest_path
+  src/shortest_path.cpp
+  src/graph_node.cpp
+  src/sampling_based/utils/rrt.cpp
+  src/sampling_based/utils/kdtree.cpp
+  src/combinatorial_based/marker_publishers/map_edges_publisher.cpp
+  src/utils/dubins.cpp
+)
+
 # ament_target_dependencies(graph_generator rclcpp geometry_msgs obstacles_msgs)
 
 # install(TARGETS
@@ -29,13 +46,6 @@ find_package(tf2_ros REQUIRED)
 #### TESTS ####
 ###############
 
-add_executable(test_graph_generator 
-  src/simple_node.cpp
-  src/graph_node.cpp
-  src/sampling_based/utils/rrt.cpp
-  src/sampling_based/utils/kdtree.cpp
-  src/utils/dubins.cpp
-  )
 
 ament_target_dependencies(test_graph_generator
   rclcpp
@@ -46,12 +56,26 @@ ament_target_dependencies(test_graph_generator
   tf2_ros
 )
 
+ament_target_dependencies(test_shortest_path
+  rclcpp
+  geometry_msgs
+  visualization_msgs
+  obstacles_msgs
+  tf2
+  tf2_ros
+)
+
+
+
 target_link_libraries(test_graph_generator Boost::headers)
 target_include_directories(test_graph_generator PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
+target_link_libraries(test_shortest_path Boost::headers)
+target_include_directories(test_shortest_path PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 install(TARGETS
   test_graph_generator
+  test_shortest_path
   DESTINATION lib/${PROJECT_NAME}
 )
 
