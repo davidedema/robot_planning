@@ -108,7 +108,8 @@ bool RRT::add_edge(KDNode_t &new_node, KDNode_t &nearest_node, boost::geometry::
     auto v_parent = this->graph_lookup[nearest_node];
     double distance = sqrt(pow(new_node.at(0) - nearest_node.at(0), 2) + pow(new_node.at(1) - nearest_node.at(1), 2));
     g[v_new].cost = g[v_parent].cost + distance;
-
+    g[v_new].l2_dist_h = sqrt(pow(new_node.at(0) - goal.at(0), 2) + pow(new_node.at(1) - goal.at(1), 2));
+    g[v_parent].childs.push_back(new_node);
     boost::add_edge(v_parent, v_new, g);
     //  update the graph and KDTree
     this->add_kd_node(new_node);
@@ -122,6 +123,7 @@ bool RRT::add_node(KDNode_t &new_node)
   g[v_new].node = new_node;
   g[v_new].parents.push_back(new_node);
   g[v_new].cost = 0.0;
+  g[v_new].l2_dist_h = sqrt(pow(new_node.at(0) - goal.at(0), 2) + pow(new_node.at(1) - goal.at(1), 2));
   this->add_kd_node(new_node);
   return true;
 }
@@ -220,8 +222,8 @@ bool RRT::is_goal(KDNode_t &point)
 void RRT::set_problem(KDNode_t &start, KDNode_t &goal)
 {
   this->start = start;
-  this->add_node(start);
   this->goal = goal;
+  this->add_node(start);
 }
 
 std::vector<KDNode_t> RRT::get_path(KDNode_t &start)
@@ -242,6 +244,11 @@ std::vector<KDNode_t> RRT::get_path(KDNode_t &start)
     current = parent;
   }
   return path;
+}
+
+Graph RRT::get_graph()
+{
+  return this->g;
 }
 
 //----------- RRT* METHODS -----------//
@@ -335,4 +342,9 @@ std::vector<KDNode_t> RRT::smooth_path(std::vector<KDNode_t> &path, boost::geome
   }
 
   return new_path;
+}
+
+std::map<KDNode_t, vertex_t> RRT::get_lookup()
+{
+  return this->graph_lookup;
 }

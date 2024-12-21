@@ -37,6 +37,7 @@ add_executable(entrypoint
   src/sampling_based/utils/rrt.cpp
   src/sampling_based/utils/kdtree.cpp
   src/utils/dubins.cpp
+  src/utils/cbs.cpp
   )
 
 ament_target_dependencies(entrypoint

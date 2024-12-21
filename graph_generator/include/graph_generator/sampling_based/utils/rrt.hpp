@@ -21,7 +21,9 @@ struct node
 {
   KDNode_t node;
   std::vector<KDNode_t> parents;
+  std::vector<KDNode_t> childs;
   double cost;
+  double l2_dist_h;
 };
 
 // Define the graph type
@@ -58,6 +60,8 @@ public:
   ~RRT();
 
   // main functions
+  Graph get_graph();
+  std::map<KDNode_t, vertex_t> get_lookup();
   void set_problem(KDNode_t &start, KDNode_t &goal);
   KDNode_t get_random_point(int index, boost::geometry::model::multi_polygon<polygon_t> &map);
   KDNode_t next_point(KDNode_t &sampled_point, KDNode_t &nearest, boost::geometry::model::multi_polygon<polygon_t> &map);

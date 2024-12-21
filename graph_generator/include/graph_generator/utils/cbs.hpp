@@ -8,43 +8,34 @@
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graph_traits.hpp>
 
-typedef std::vector<double> KDNode_t;
+#include "graph_generator/sampling_based/utils/rrt.hpp"
 
-struct node
-{
-  KDNode_t node;
-  std::vector<KDNode_t> parents;
-  double cost;
-};
-
-// Define the graph type
-using Graph = boost::adjacency_list<
-    boost::vecS,        // Store edges in a vector
-    boost::vecS,        // Store vertices in a vector
-    boost::undirectedS, // Undirected graph
-    struct node         // Vertex properties
-    >;
-
-typedef boost::graph_traits<Graph>::vertex_descriptor vertex_t;
+typedef std::vector<KDNode_t> plan_t;
 
 class CBS
 {
   private:
     Graph g;
     std::map<KDNode_t, vertex_t> graph_lookup;
+    std::map<KDNode_t, double> cost_lookup;
+    std::map<KDNode_t, KDNode_t> parent_lookup;
 
     std::vector<KDNode_t> plan1;
     std::vector<KDNode_t> plan2;
 
   public:
     // Constructor
-    CBS();
+    CBS(Graph g, std::map<KDNode_t, vertex_t> gl);
     // Distructor
     ~CBS();
 
 
     // High level search
+    void check_conflicts(plan_t planA, plan_t planB);
+
 
     // Low level search
-    std::vector<KDNode_t> astar_search(KDNode_t &start, KDNode_t &goal)
-}
+    plan_t astar_search(KDNode_t &start, KDNode_t &goal);
+    double get_total_cost(KDNode_t &node);
+    double get_distance(KDNode_t &current, KDNode_t &child);
+};

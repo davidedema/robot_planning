@@ -194,7 +194,15 @@ void GraphGenerator::set_borders(const geometry_msgs::msg::Polygon &msg)
 {
   for (auto const &point : msg.points)
   {
-    this->map_borders.outer().insert(this->map_borders.outer().begin(), point_t(point.x, point.y));
+    // this->map_borders.outer().insert(this->map_borders.outer().begin(), point_t(point.x, point.y));
+    if (msg.points.size() > 4)
+    {
+      map_borders.outer().push_back(point_t(point.x, point.y));
+    }
+    else
+    {
+      map_borders.outer().insert(this->map_borders.outer().begin(), point_t(point.x, point.y));
+    }
   }
 
   map_borders.outer().push_back(map_borders.outer().front());

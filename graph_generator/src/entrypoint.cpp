@@ -10,6 +10,7 @@
 #include "graph_generator/sampling_based/utils/kdtree.hpp"
 
 #include "graph_generator/utils/dubins.hpp"
+#include "graph_generator/utils/cbs.hpp"
 
 #include <nav_msgs/msg/path.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
@@ -324,7 +325,7 @@ int main(int argc, char **argv)
   auto m = std::make_shared<GraphGenerator>();
 
   RCLCPP_INFO(m->get_logger(), "Waiting for obstacles, borders and gates...");
-  while (!m->obstacles_r_ || !m->borders_r_ || !m->gates_r_ || !m->pos1_r_ || !m->pos2_r_)
+  while (!m->obstacles_r_ || !m->borders_r_ || !m->gates_r_ || !m->pos1_r_)
   {
     rclcpp::spin_some(m->get_node_base_interface());
     rclcpp::sleep_for(std::chrono::milliseconds(100));
@@ -351,15 +352,16 @@ int main(int argc, char **argv)
 
   for (uint i = 1; i < 3000; i++)
   {
+
     auto point = _rrt.get_random_point(i, map);
     auto nearest = _rrt.get_nn(point, 1);
     auto new_point = _rrt.next_point(point, nearest, map);
-    auto best_one = _rrt.get_best_neighbor(new_point, nearest, 0.5, map);
+    auto best_one = _rrt.get_best_neighbor(new_point, nearest, 1.5, map);
     if (_rrt.add_edge(new_point, best_one, map))
     {
       sampled_points.push_back(new_point);
     }
-    _rrt.rewire(new_point, 0.5, map);
+    _rrt.rewire(new_point, 1.5, map);
     if (_rrt.is_goal(new_point))
     {
       path = _rrt.get_path(new_point);
@@ -368,14 +370,14 @@ int main(int argc, char **argv)
   }
 
   // Pose for shelfino 2
-  KDNode_t start_shelfino2 = {m->get_pose2().at(0), m->get_pose2().at(1)};
+  // KDNode_t start_shelfino2 = {m->get_pose2().at(0), m->get_pose2().at(1)};
 
-  // Add shelfino 2 start_shelfino1 node to the graph
-  auto nearest2 = _rrt.get_nn(start_shelfino2, 1);
-  if (_rrt.add_edge(start_shelfino2, nearest2, map))
-  {
-    RCLCPP_INFO(m->get_logger(), "\033[1;32m Added start shelfino 2\033[0m");
-  }
+  // // Add shelfino 2 start_shelfino1 node to the graph
+  // auto nearest2 = _rrt.get_nn(start_shelfino2, 1);
+  // if (_rrt.add_edge(start_shelfino2, nearest2, map))
+  // {
+  //   RCLCPP_INFO(m->get_logger(), "\033[1;32m Added start shelfino 2\033[0m");
+  // }
   // Pose for shelfino 3
   // KDNode_t start_shelfino3 = {m->get_pose3().at(0), m->get_pose3().at(1)};
 
@@ -386,6 +388,20 @@ int main(int argc, char **argv)
   //   RCLCPP_INFO(m->get_logger(), "\033[1;32m Added start shelfino 3\033[0m");
   // }
   // Convert path to 2D points
+
+  // Now roadmap is generated, run CBS to find joint plan
+
+  //##################//
+  // CBS CODE TESTING //
+  //##################//
+
+  CBS _cbs(_rrt.get_graph(), _rrt.get_lookup());
+
+
+  //##########//
+  // OLD CODE //
+  //##########//
+
   for (const auto &p : path)
   {
     path_points.push_back({p.at(0), p.at(1)});
@@ -407,7 +423,7 @@ int main(int argc, char **argv)
   }
 
   // rclcpp::sleep_for(std::chrono::milliseconds(1000)); // Sleep for 1 second
-  node->setPathPoints(path_points2);
+  node->setPathPoints(path_points);
   // Output path
   // for (const auto &p : path)
   // {
@@ -421,12 +437,13 @@ int main(int argc, char **argv)
   cout << "  " << endl;
   path_points2.erase(path_points2.begin());
   path_points2.erase(path_points2.end());
+  path_points.erase(path_points.begin());
+  path_points.erase(path_points.end());
 
   for (const auto &p : path_points2)
   {
     cout << p.at(0) << "  " << p.at(1) << endl;
   }
-
   auto dubins_curves = d.dubins_multi_point(start_shelfino1.at(0), start_shelfino1.at(1), m->get_pose1().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), path_points2, kmax, _rrt, map);
   node->setDubinsCurves(dubins_curves);
 
