@@ -59,6 +59,10 @@ std::vector<line_xy_t> find_bitangents(const multipolygon_xy_t &multipolygon)
     {
       if (&poly1 != &poly2)
       {
+        polygon_xy_t p_poly1, p_poly2;
+        bg::convert(poly1, p_poly1);
+        bg::convert(poly2, p_poly2);
+
         for (const auto point1 : poly1)
         {
           for (const auto point2 : poly2)
@@ -66,38 +70,66 @@ std::vector<line_xy_t> find_bitangents(const multipolygon_xy_t &multipolygon)
             line_xy_t line = line_xy_t{point1, point2};
 
             bg::model::multi_point<point_xy_t> intersections;
-            bg::intersection(line, poly2, intersections);
-            if (intersections.size() == 1)
+            // bg::intersection(line, p_poly2, intersections);
+            bool unwanted_intersection = false;
+            for (size_t i = 0; i < poly1.size() - 1; ++i)
             {
-              for (const auto &poly_inner : inner)
+              line_xy_t line_v = line_xy_t{poly1[i], poly1[i + 1]}; // Create a segment for the edge
+              bool to_ignore1 = (bg::equals(poly1[i], point1) || bg::equals(poly1[i+1], point1));
+              bool to_ignore2 = (bg::equals(poly1[i], point2) || bg::equals(poly1[i + 1], point2));
+              if (!to_ignore1 && !to_ignore2 && bg::intersects(line, line_v))
               {
-
-                bg::model::multi_point<point_xy_t> intersections_inner;
-                bg::intersection(line, poly_inner, intersections_inner);
-                std::cout << intersections_inner.size()
-                          << std::endl;
-                if (intersections_inner.size() == 0)
-                  bitangents.emplace_back(line);
-
-                /*                 if (&poly2 != &poly_inner && &poly1 != &poly_inner && (intersections_inner.size() == 0))
-                                {
-                                  bitangents.emplace_back(line);
-                                }
-                                else if (&poly2 == &poly_inner && (intersections_inner.size() == 0))
-                                {
-                                  bitangents.emplace_back(line);
-                                }
-                                else if (&poly1 == &poly_inner && (intersections_inner.size() == 0))
-                                {
-                                  bitangents.emplace_back(line);
-                                } */
+                unwanted_intersection = true;
               }
             }
+            for (size_t i = 0; i < poly2.size() - 1; ++i)
+            {
+              line_xy_t line_v = line_xy_t{poly2[i], poly2[i + 1]}; // Create a segment for the edge
+              bool to_ignore1 = (bg::equals(poly2[i], point1) || bg::equals(poly2[i + 1], point1));
+              bool to_ignore2 = (bg::equals(poly2[i], point2) || bg::equals(poly2[i + 1], point2));
+              if (!to_ignore1 && !to_ignore2 && bg::intersects(line, line_v))
+              {
+                unwanted_intersection = true;
+              }
+            }
+            if (!unwanted_intersection)
+              bitangents.emplace_back(line);
           }
+
+          /* if (intersections.size() == 1)
+          {
+            for (const auto &poly_inner : inner)
+            {
+
+              std::vector<point_xy_t> intersections_inner;
+              bg::intersection(line, poly_inner, intersections_inner);
+
+              if (intersections_inner.size() == 0)
+              {
+                bitangents.emplace_back(line);
+                std::cout << intersections_inner.size()
+                          << std::endl;
+                //rclcpp::spin(std::make_shared<SimpleEdgePublisherNode>(bitangents, "single_line"));
+              }
+
+              /*                 if (&poly2 != &poly_inner && &poly1 != &poly_inner && (intersections_inner.size() == 0))
+                              {
+                                bitangents.emplace_back(line);
+                              }
+                              else if (&poly2 == &poly_inner && (inters                  std::cout << intersections_inner.size()
+                          << std::endl;ctions_inner.size() == 0))
+                              {
+                                bitangents.emplace_back(line);
+                              }
+                              else if (&poly1 == &poly_inner && (intersections_inner.size() == 0))
+                              {
+                                bitangents.emplace_back(line);
+                              } */
         }
       }
     }
   }
+
   return bitangents;
 }
 
