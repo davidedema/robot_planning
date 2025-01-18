@@ -28,11 +28,9 @@ add_executable(test_graph_generator
 
 add_executable(test_shortest_path
   src/shortest_path.cpp
-  src/graph_node.cpp
-  src/sampling_based/utils/rrt.cpp
-  src/sampling_based/utils/kdtree.cpp
+  src/combinatorial_based/map_construction.cpp
   src/combinatorial_based/marker_publishers/map_edges_publisher.cpp
-  src/utils/dubins.cpp
+  #src/utils/dubins.cpp
 )
 
 # ament_target_dependencies(graph_generator rclcpp geometry_msgs obstacles_msgs)

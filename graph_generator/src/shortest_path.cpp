@@ -1,10 +1,10 @@
-#include "graph_generator/graph_node.hpp"
 #include <boost/geometry.hpp>
 #include <boost/geometry/geometries/geometries.hpp>
 #include <geometry_msgs/msg/point.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <visualization_msgs/msg/marker.hpp>
 #include <graph_generator/marker_publishers/map_edges_publisher.hpp>
+#include "graph_generator/combinatorial_based/map_construction.hpp"
 
 namespace bg = boost::geometry;
 
@@ -48,83 +48,69 @@ bool is_tangent(const line_xy_t &line, const polygon_xy_t &border, const multipo
 std::vector<line_xy_t> find_bitangents(const multipolygon_xy_t &multipolygon)
 {
   std::vector<line_xy_t> bitangents;
-  auto inner = multipolygon[0].inners();
-  for (const auto &poly1 : inner)
+  auto inner_rings = multipolygon[0].inners();
+
+  for (const auto &ring1 : inner_rings)
   {
-    if (!bg::is_valid(poly1))
+    if (!bg::is_valid(ring1))
     {
       std::cerr << "The ring is not valid!" << std::endl;
     }
-    for (const auto &poly2 : inner)
+    for (const auto &ring2 : inner_rings)
     {
-      if (&poly1 != &poly2)
+      if (!bg::is_valid(ring2))
       {
-        polygon_xy_t p_poly1, p_poly2;
-        bg::convert(poly1, p_poly1);
-        bg::convert(poly2, p_poly2);
-
-        for (const auto point1 : poly1)
+        std::cerr << "The ring is not valid!" << std::endl;
+      }
+      if (&ring1 != &ring2)
+      {
+        for (const auto point1 : ring1)
         {
-          for (const auto point2 : poly2)
+          for (const auto point2 : ring2)
           {
             line_xy_t line = line_xy_t{point1, point2};
 
             bg::model::multi_point<point_xy_t> intersections;
-            // bg::intersection(line, p_poly2, intersections);
             bool unwanted_intersection = false;
-            for (size_t i = 0; i < poly1.size() - 1; ++i)
+            
+            for (auto &other_ring : inner_rings)
             {
-              line_xy_t line_v = line_xy_t{poly1[i], poly1[i + 1]}; // Create a segment for the edge
-              bool to_ignore1 = (bg::equals(poly1[i], point1) || bg::equals(poly1[i+1], point1));
-              bool to_ignore2 = (bg::equals(poly1[i], point2) || bg::equals(poly1[i + 1], point2));
+              if (&ring1 != &other_ring && &ring2 != &other_ring)
+                for (size_t i = 0; i < other_ring.size() - 1 && !unwanted_intersection; ++i) // check if there is internal intersection
+                {
+                  line_xy_t line_v = line_xy_t{other_ring[i], other_ring[i + 1]};
+                  if (bg::intersects(line, line_v))
+                  {
+                    unwanted_intersection = true;
+                  }
+                }
+            }
+
+            for (size_t i = 0; i < ring1.size() - 1 && !unwanted_intersection; ++i) // check if there is internal intersection
+            {
+              line_xy_t line_v = line_xy_t{ring1[i], ring1[i + 1]};
+              bool to_ignore1 = (bg::equals(ring1[i], point1) || bg::equals(ring1[i + 1], point1));
+              bool to_ignore2 = (bg::equals(ring1[i], point2) || bg::equals(ring1[i + 1], point2));
               if (!to_ignore1 && !to_ignore2 && bg::intersects(line, line_v))
               {
                 unwanted_intersection = true;
               }
             }
-            for (size_t i = 0; i < poly2.size() - 1; ++i)
+
+            for (size_t i = 0; i < ring2.size() - 1 && !unwanted_intersection; ++i)
             {
-              line_xy_t line_v = line_xy_t{poly2[i], poly2[i + 1]}; // Create a segment for the edge
-              bool to_ignore1 = (bg::equals(poly2[i], point1) || bg::equals(poly2[i + 1], point1));
-              bool to_ignore2 = (bg::equals(poly2[i], point2) || bg::equals(poly2[i + 1], point2));
+              line_xy_t line_v = line_xy_t{ring2[i], ring2[i + 1]}; // Create a segment for the edge
+              bool to_ignore1 = (bg::equals(ring2[i], point1) || bg::equals(ring2[i + 1], point1));
+              bool to_ignore2 = (bg::equals(ring2[i], point2) || bg::equals(ring2[i + 1], point2));
               if (!to_ignore1 && !to_ignore2 && bg::intersects(line, line_v))
               {
                 unwanted_intersection = true;
               }
             }
+
             if (!unwanted_intersection)
               bitangents.emplace_back(line);
           }
-
-          /* if (intersections.size() == 1)
-          {
-            for (const auto &poly_inner : inner)
-            {
-
-              std::vector<point_xy_t> intersections_inner;
-              bg::intersection(line, poly_inner, intersections_inner);
-
-              if (intersections_inner.size() == 0)
-              {
-                bitangents.emplace_back(line);
-                std::cout << intersections_inner.size()
-                          << std::endl;
-                //rclcpp::spin(std::make_shared<SimpleEdgePublisherNode>(bitangents, "single_line"));
-              }
-
-              /*                 if (&poly2 != &poly_inner && &poly1 != &poly_inner && (intersections_inner.size() == 0))
-                              {
-                                bitangents.emplace_back(line);
-                              }
-                              else if (&poly2 == &poly_inner && (inters                  std::cout << intersections_inner.size()
-                          << std::endl;ctions_inner.size() == 0))
-                              {
-                                bitangents.emplace_back(line);
-                              }
-                              else if (&poly1 == &poly_inner && (intersections_inner.size() == 0))
-                              {
-                                bitangents.emplace_back(line);
-                              } */
         }
       }
     }
@@ -173,9 +159,12 @@ multipolygon_xy_t convertMultiPolygon(const multi_polygon_t &multipolygon)
 
 int main(int argc, char **argv)
 {
+  std::stringstream ss;
+  std::string sService;
+
   rclcpp::init(argc, argv);
 
-  auto m = std::make_shared<GraphGenerator>();
+  auto m = std::make_shared<MapConstruction>();
 
   RCLCPP_INFO(m->get_logger(), "Waiting for obstacles, borders and gates...");
   while (!m->obstacles_r_ || !m->borders_r_ || !m->pos1_r_)
@@ -187,18 +176,21 @@ int main(int argc, char **argv)
   RCLCPP_INFO(m->get_logger(), "Building map");
   auto map = m->get_map();
 
-  RCLCPP_INFO(m->get_logger(), "\033[1;32m Map built\033[0m");
-  // rclcpp::spin(std::make_shared<MapEdgePublisherNode>(map, "map_edges"));
+  ss << "\033[1;32m Number of obstacles " << m->get_obstacles().size() << "\033[0m";
+  sService = ss.str();
+  RCLCPP_INFO(m->get_logger(), sService.c_str());
+
+  RCLCPP_INFO(m->get_logger(),"\033[1;32m Map built\033[0m");
+  rclcpp::spin(std::make_shared<MapEdgePublisherNode>(map, "map_edges"));
 
   RCLCPP_INFO(m->get_logger(), "\033[1;32m Generating Graph\033[0m");
 
   auto remapped = convertMultiPolygon(map);
 
-  std::stringstream ss;
 
   ss << "\033[1;32m Graph size " << remapped[0].inners().size() << "\033[0m";
 
-  std::string sService = ss.str();
+  sService = ss.str();
   RCLCPP_INFO(m->get_logger(), sService.c_str());
 
   std::vector<line_xy_t> line;

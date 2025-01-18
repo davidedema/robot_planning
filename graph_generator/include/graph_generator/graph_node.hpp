@@ -49,6 +49,7 @@ public:
   void callback_gates(const geometry_msgs::msg::PoseArray::SharedPtr msg);
   void callback_pos1(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg);
   void callback_pos2(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg);
+  void callback_pos3(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg);
 
   // flags for received msgs
   bool borders_r_;
@@ -56,7 +57,8 @@ public:
   bool gates_r_;
   bool pos1_r_;
   bool pos2_r_;
-  
+  bool pos3_r_;
+
   // flag for map creation
   bool is_map_created;
 
@@ -67,7 +69,7 @@ public:
   void set_gate(const geometry_msgs::msg::PoseArray &msg);
   void set_pos1(const geometry_msgs::msg::PoseWithCovarianceStamped &msg);
   void set_pos2(const geometry_msgs::msg::PoseWithCovarianceStamped &msg);
-
+  void set_pos3(const geometry_msgs::msg::PoseWithCovarianceStamped &msg);
 
   // getter for map
   std::vector<polygon_t> get_obstacles();
@@ -76,6 +78,7 @@ public:
 
   pose_t get_pose1();
   pose_t get_pose2();
+  pose_t get_pose3();
 
   // get the map (polygon with holes replacing the obstacles)
   boost::geometry::model::multi_polygon<polygon_t> get_map();
@@ -91,6 +94,7 @@ private:
 
   pose_t pos1;
   pose_t pos2;
+  pose_t pos3;
 
   // subscriber
   rclcpp::Subscription<geometry_msgs::msg::Polygon>::SharedPtr subscription_borders_;
@@ -98,4 +102,5 @@ private:
   rclcpp::Subscription<geometry_msgs::msg::PoseArray>::SharedPtr subscription_gates_;
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr subscription_position1_;
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr subscription_position2_;
+  rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr subscription_position3_;
 };

@@ -4,7 +4,6 @@ MapEdgePublisherNode::MapEdgePublisherNode(
     boost::geometry::model::multi_polygon<polygon_t> multi_polygon, std::string topic)
     : Node("map_publisher")
 {
-    bg::correct(multi_polygon);
     multi_polygon_ = multi_polygon;
     topic_ = topic;
     // Create publisher
@@ -13,7 +12,7 @@ MapEdgePublisherNode::MapEdgePublisherNode(
     // Publish edges in a timer callback
     timer_ = this->create_wall_timer(
         std::chrono::milliseconds(500),
-        std::bind(&MapEdgePublisherNode::publishEdges, this));
+        std::bind(&MapEdgePublisherNode::publishPoints, this));
 }
 
 void MapEdgePublisherNode::publishEdges()
@@ -92,6 +91,65 @@ void MapEdgePublisherNode::addEdgesToMarker(const Ring &ring,
     }
 }
 
+void MapEdgePublisherNode::publishPoints()
+{
+    if (edge_publisher_->get_subscription_count() > 0 ||
+        edge_publisher_->get_intra_process_subscription_count() > 0)
+    {
+        // Create a Marker message
+        visualization_msgs::msg::Marker marker;
+        marker.header.frame_id = "map"; // Set to the appropriate frame
+        marker.header.stamp = this->get_clock()->now();
+        marker.ns = "polygons";
+        marker.id = 0; // You can increment this if you want to add multiple markers
+        marker.type = visualization_msgs::msg::Marker::POINTS;
+        marker.action = visualization_msgs::msg::Marker::ADD;
+
+        // Set the point size (in RViz)
+        marker.scale.x = 0.1; // Size of the points
+        marker.scale.y = 0.1;
+        marker.color.a = 1.0; // Fully opaque
+        marker.color.r = 1.0; // Red color
+
+        // Iterate over the multi-polygon and extract points
+        size_t id = 0; // Unique marker id (for each point)
+        for (const auto &polygon : this->multi_polygon_)
+        {
+            // Process outer points (boundary)
+            for (const auto &pt : polygon.outer())
+            {
+                geometry_msgs::msg::Point p;
+                p.x = boost::geometry::get<0>(pt); // x-coordinate
+                p.y = boost::geometry::get<1>(pt); // y-coordinate
+                p.z = 0.0;                         // Set z-coordinate to 0 (if it's 2D)
+                marker.points.push_back(p);
+
+                // Optionally, set unique IDs for each point in the marker
+                marker.id = id++;
+            }
+
+            // Process inner points (holes)
+            for (const auto &hole : polygon.inners())
+            {
+                for (const auto &pt : hole)
+                {
+                    geometry_msgs::msg::Point p;
+                    p.x = boost::geometry::get<0>(pt); // x-coordinate
+                    p.y = boost::geometry::get<1>(pt); // y-coordinate
+                    p.z = 0.0;                         // Set z-coordinate to 0 (if it's 2D)
+                    marker.points.push_back(p);
+
+                    // Optionally, set unique IDs for each point in the marker
+                    marker.id = id++;
+                }
+            }
+        }
+
+        // Publish marker
+        edge_publisher_->publish(marker);
+    }
+}
+
 /////Simple edges Publisher//////////////////////////////////////////////
 
 SimpleEdgePublisherNode::SimpleEdgePublisherNode(
@@ -109,6 +167,8 @@ SimpleEdgePublisherNode::SimpleEdgePublisherNode(
         std::bind(&SimpleEdgePublisherNode::publishEdges, this));
 }
 
+
+
 void SimpleEdgePublisherNode::publishEdges()
 {
     if (edge_publisher_->get_subscription_count() > 0 ||
@@ -124,10 +184,10 @@ void SimpleEdgePublisherNode::publishEdges()
         marker.type =
             visualization_msgs::msg::Marker::LINE_LIST; // Use LINE_LIST for edges
         marker.action = visualization_msgs::msg::Marker::ADD;
-        marker.scale.x = 0.1; // Line width
+        marker.scale.x = 0.01; // Line width
         marker.color.a = 1.0; // Alpha
-        marker.color.r = 1.0; // Red
-        marker.color.g = 1.0; // Red
+        marker.color.r = 1.0;
+        marker.color.g = .5;
 
         for (std::size_t i = 0; i < edges_.size(); ++i)
         {

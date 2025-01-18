@@ -3,15 +3,13 @@
 #include <geometry_msgs/msg/point.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <visualization_msgs/msg/marker.hpp>
-#include "graph_generator/graph_node.hpp"
-
+#include "graph_generator/combinatorial_based/map_construction.hpp"
 
 namespace bg = boost::geometry;
 
 typedef  bg::model::multi_polygon<polygon_t> multi_polygon_t;
 typedef bg::model::segment<point_t> Line;
 
-using multi_polygon_t = bg::model::multi_polygon<polygon_t>;
 using point_xy_t = boost::geometry::model::d2::point_xy<double>;
 using polygon_xy_t = boost::geometry::model::polygon<point_xy_t>;
 using multipolygon_xy_t = bg::model::multi_polygon<polygon_xy_t>;
@@ -30,6 +28,7 @@ private:
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr edge_publisher_;
     rclcpp::TimerBase::SharedPtr timer_;
     void publishEdges();
+    void publishPoints();
 
     template <typename Ring>
     void addEdgesToMarker(const Ring &ring,
