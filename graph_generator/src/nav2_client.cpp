@@ -35,10 +35,10 @@ public:
         std::bind(&PathPublisher::store_path1, this, std::placeholders::_1));
 
     client2_ptr_ =
-        rclcpp_action::create_client<FollowPath>(this, "shelfino3/follow_path");
+        rclcpp_action::create_client<FollowPath>(this, "shelfino2/follow_path");
 
     _path_subscription2 = this->create_subscription<nav_msgs::msg::Path>(
-        "shelfino3/plan1", 10,
+        "shelfino2/plan1", 10,
         std::bind(&PathPublisher::store_path2, this, std::placeholders::_1));
 
     if (!this->client1_ptr_->wait_for_action_server() && !this->client2_ptr_->wait_for_action_server())
@@ -68,7 +68,7 @@ public:
       return;
     }
     full_path1 = msg;
-    std::cout << "Path stored!" << std::endl;
+    std::cout << "Path 1 stored!" << std::endl;
     waypoints1_received = true;
     return;
   }
@@ -79,7 +79,7 @@ public:
       return;
     }
     full_path2 = msg;
-    std::cout << "Path stored!" << std::endl;
+    std::cout << "Path 2 stored!" << std::endl;
     waypoints2_received = true;
     return;
   }
@@ -91,8 +91,8 @@ int main(int argc, char *argv[])
   auto node = std::make_shared<PathPublisher>();
   while (rclcpp::ok())
   {
-    if (node->waypoints1_received)
-    // if (node->waypoints1_received && node->waypoints2_received)
+    // if (node->waypoints1_received)
+    if (node->waypoints1_received && node->waypoints2_received)
     {
       std::cout << "\033[1;32mSending paths to controllers\033[0m" << std::endl;
       // nav_msgs::msg::Path full_path1;

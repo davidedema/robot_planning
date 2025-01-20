@@ -111,6 +111,11 @@ bool RRT::add_edge(KDNode_t &new_node, KDNode_t &nearest_node, boost::geometry::
     g[v_new].l2_dist_h = sqrt(pow(new_node.at(0) - goal.at(0), 2) + pow(new_node.at(1) - goal.at(1), 2));
     g[v_parent].childs.push_back(new_node);
     boost::add_edge(v_parent, v_new, g);
+
+    // do the double connection 
+    g[v_new].childs.push_back(nearest_node);
+    g[v_parent].parents.push_back(new_node);
+
     //  update the graph and KDTree
     this->add_kd_node(new_node);
     return true;
@@ -134,6 +139,11 @@ bool RRT::attach_node(KDNode_t &new_node, KDNode_t &nearest_node, boost::geometr
     g[v_new].l2_dist_h = sqrt(pow(new_node.at(0) - goal.at(0), 2) + pow(new_node.at(1) - goal.at(1), 2));
     g[v_child].parents.push_back(new_node);
     boost::add_edge(v_child, v_new, g);
+
+    // double connection 
+    g[v_child].childs.push_back(new_node);
+    g[v_new].parents.push_back(nearest_node);
+
     //  update the graph and KDTree
     this->add_kd_node(new_node);
     return true;

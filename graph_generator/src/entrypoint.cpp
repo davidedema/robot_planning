@@ -19,6 +19,10 @@
 #include <geometry_msgs/msg/point.hpp>
 #include <vector>
 
+#define DISPLAY_SAMPLES 0
+#define DISPLAY_PATH_1 1
+#define DISPLAY_PATH_2 1
+
 using namespace std;
 
 class PointMarkerNode : public rclcpp::Node
@@ -39,8 +43,10 @@ public:
     dubins_curve_pub_ = this->create_publisher<visualization_msgs::msg::Marker>(
         "dubins_curve_marker", rclcpp::QoS(10));
 
-    nav2_path_pub_ = this->create_publisher<nav_msgs::msg::Path>(
+    shelfino1_nav2_path_pub_ = this->create_publisher<nav_msgs::msg::Path>(
         "shelfino1/plan1", rclcpp::QoS(10));
+    shelfino2_nav2_path_pub_ = this->create_publisher<nav_msgs::msg::Path>(
+        "shelfino2/plan1", rclcpp::QoS(10));
     // Timer to periodically check for subscribers and publish
     timer_ = this->create_wall_timer(
         std::chrono::milliseconds(timer_interval_ms_),
@@ -63,9 +69,10 @@ public:
   {
     dubins_curves_ = curves;
   }
-  void send_nav2(const nav_msgs::msg::Path &path)
+  void send_nav2(const nav_msgs::msg::Path &path1, const nav_msgs::msg::Path &path2)
   {
-    nav2_path_pub_->publish(path);
+    shelfino1_nav2_path_pub_->publish(path1);
+    shelfino2_nav2_path_pub_->publish(path2);
   }
 
 private:
@@ -243,7 +250,8 @@ private:
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr sampled_points_pub_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr path_pub_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr dubins_curve_pub_;
-  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr nav2_path_pub_;
+  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr shelfino1_nav2_path_pub_;
+  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr shelfino2_nav2_path_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
   int timer_interval_ms_;
 };
@@ -258,7 +266,7 @@ nav_msgs::msg::Path convertDubinsPathToNavPath(const std::vector<dubins_curve> &
   {
     auto add_arc_points_to_path = [&](const dubins_arc &arc)
     {
-      double step = 0.1; // Step size for sampling points along the arc
+      double step = 0.05; // Step size for sampling points along the arc
       double theta = arc.th0;
 
       if (std::abs(arc.k) < 1e-6)
@@ -346,7 +354,7 @@ int main(int argc, char **argv)
   KDNode_t start_shelfino1 = {m->get_pose1().at(0), m->get_pose1().at(1)};
   KDNode_t goal = {m->get_gate().at(0), m->get_gate().at(1)};
   vector<KDNode_t> path;
-  _rrt.set_problem(start_shelfino1, goal); 
+  _rrt.set_problem(start_shelfino1, goal);
 
   // Main tree -> created from shelfino1
 
@@ -356,12 +364,12 @@ int main(int argc, char **argv)
     auto point = _rrt.get_random_point(i, map);
     auto nearest = _rrt.get_nn(point, 1);
     auto new_point = _rrt.next_point(point, nearest, map);
-    auto best_one = _rrt.get_best_neighbor(new_point, nearest, 1.5, map);
+    auto best_one = _rrt.get_best_neighbor(new_point, nearest, 0.3, map);
     if (_rrt.add_edge(new_point, best_one, map))
     {
       sampled_points.push_back(new_point);
     }
-    _rrt.rewire(new_point, 1.5, map);
+    _rrt.rewire(new_point, 0.3, map);
     if (_rrt.is_goal(new_point))
     {
       path = _rrt.get_path(new_point);
@@ -369,55 +377,93 @@ int main(int argc, char **argv)
     }
   }
 
-  RCLCPP_INFO(m->get_logger(), "\033[1;32m Graph builded, found path\033[0m");
-  RCLCPP_INFO(m->get_logger(), "Running a star");
+  if (DISPLAY_SAMPLES)
+  {
+    node->setSampledPoints(sampled_points);
+  }
 
   // Pose for shelfino 2
   KDNode_t start_shelfino2 = {m->get_pose2().at(0), m->get_pose2().at(1)};
 
-  // // Add shelfino 2 start_shelfino1 node to the graph
+  // Add shelfino 2 start_shelfino1 node to the graph
   auto nearest2 = _rrt.get_nn(start_shelfino2, 1);
-  if (_rrt.attach_node(start_shelfino2, start_shelfino1, map))
+  cout << nearest2.at(0) << "  " << nearest2.at(1) << endl;
+  if (_rrt.attach_node(start_shelfino2, nearest2, map))
   {
     RCLCPP_INFO(m->get_logger(), "\033[1;32m Added start shelfino 2\033[0m");
   }
-  // Pose for shelfino 3
-  // KDNode_t start_shelfino3 = {m->get_pose3().at(0), m->get_pose3().at(1)};
 
-  // // Add shelfino 3 start_shelfino1 node to the graph
-  // auto nearest3 = _rrt.get_nn(start_shelfino3, 1);
-  // if (_rrt.add_edge(start_shelfino3, nearest3, map))
+  // Multi agent path finding
+
+  CBS _cbs_shelfino1(_rrt.get_graph(), _rrt.get_lookup());
+  CBS _cbs_shelfino2(_rrt.get_graph(), _rrt.get_lookup());
+  bool path_found = false;
+
+  // while (!path_found)
   // {
-  //   RCLCPP_INFO(m->get_logger(), "\033[1;32m Added start shelfino 3\033[0m");
+    // find the two shortest path
+    // bool collision = false;
+    auto path_astar = _cbs_shelfino1.astar_search(start_shelfino1, *(path.end() - 1));
+    auto path_astar2 = _cbs_shelfino2.astar_search(start_shelfino2, *(path.end() - 1));
+
+    // smooth it
+    auto shelfino1_path = _rrt.smooth_path(path_astar, map);
+    auto shelfino2_path = _rrt.smooth_path(path_astar2, map);
+
+  //   size_t min_size = std::min(path_astar.size(), path_astar2.size());
+  //   // check if the two path have collisions
+  //   for (size_t i = 0; i < min_size; i++)
+  //   {
+  //     if (path_astar[i] == path_astar2[i])
+  //     {
+  //       collision = true;
+  //     }
+  //   }
+  //   if (!collision)
+  //   {
+  //     path_found = true;
+  //   }
   // }
-  // Convert path to 2D points
-
-  // Now roadmap is generated, run CBS to find joint plan
-
-  //##################//
-  // CBS CODE TESTING //
-  //##################//
-
-  CBS _cbs(_rrt.get_graph(), _rrt.get_lookup());
-  auto path_astar = _cbs.astar_search(start_shelfino1, *(path.end()-1));
-  cout << "FINISHED" << endl;
-  auto path_astar2 = _cbs.astar_search(start_shelfino2, *(path.end()-1));
-  cout << "FINISHED" << endl;
-  RCLCPP_INFO(m->get_logger(), "\033[1;32m A star runned, found path\033[0m");
-  if (path_astar.empty())
+  // Display path
+  if (DISPLAY_PATH_1)
   {
-    cout << "PATH EMPTY!" << endl;
+    node->setPathPoints(shelfino1_path);
   }
-  else
+  // cout << "FINISHED" << endl;
+  if (DISPLAY_PATH_2)
   {
-    for (const auto &p : path_astar)
-    {
-      cout << p.at(0) << "  " << p.at(1) << endl;
-    }
+    node->setPathPoints(shelfino2_path);
   }
-  //##########//
-  // OLD CODE //
-  //##########//
+
+  // create dubinized version of the path
+  Dubins d({0.0, 0.0}, {0.0, 0.0}, kmax);
+  shelfino1_path.erase(shelfino1_path.begin());
+  shelfino1_path.erase(shelfino1_path.end());
+  shelfino2_path.erase(shelfino2_path.begin());
+  shelfino2_path.erase(shelfino2_path.end());
+  auto shelfino1_d_path = d.dubins_multi_point(start_shelfino1.at(0), start_shelfino1.at(1), m->get_pose1().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino1_path, kmax, _rrt, map);
+  auto shelfino2_d_path = d.dubins_multi_point(start_shelfino2.at(0), start_shelfino2.at(1), m->get_pose1().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino2_path, kmax, _rrt, map);
+  auto shelfino1_nav2 = convertDubinsPathToNavPath(shelfino1_d_path);
+  auto shelfino2_nav2 = convertDubinsPathToNavPath(shelfino2_d_path);
+  node->send_nav2(shelfino1_nav2, shelfino2_nav2);
+
+
+  // cout << "FINISHED" << endl;
+  // RCLCPP_INFO(m->get_logger(), "\033[1;32m A star runned, found path\033[0m");
+  // if (path_astar.empty())
+  // {
+  //   cout << "PATH EMPTY!" << endl;
+  // }
+  // else
+  // {
+  //   for (const auto &p : path_astar)
+  //   {
+  //     cout << p.at(0) << "  " << p.at(1) << endl;
+  //   }
+  // }
+  // ##########//
+  //  OLD CODE //
+  // ##########//
 
   // for (const auto &p : path)
   // {
@@ -426,28 +472,28 @@ int main(int argc, char **argv)
 
   // Dubins d({0.0, 0.0}, {0.0, 0.0}, kmax);
   // // Set points in the node
-  // node->setSampledPoints(sampled_points);
+  rclcpp::spin(node);
   // node->setPathPoints(path_points);
 
   // // now find new smoothed path
   // auto new_path = _rrt.smooth_path(path, map);
 
   // // Convert path to 2D points
-  for (const auto &p : path)
-  {
-    cout << p.at(0) << "  " << p.at(1) << endl;
-    // path_points2.push_back({p.at(0), p.at(1)});
-  }
+  // for (const auto &p : path)
+  // {
+  //   cout << p.at(0) << "  " << p.at(1) << endl;
+  //   // path_points2.push_back({p.at(0), p.at(1)});
+  // }
 
   // // rclcpp::sleep_for(std::chrono::milliseconds(1000)); // Sleep for 1 second
-  node->setPathPoints(path);
-  rclcpp::spin_some(node);
-  std::cin.get();
-  node->setPathPoints(path_astar);
-  rclcpp::spin_some(node);
-  std::cin.get();
-  node->setPathPoints(path_astar2);
-  rclcpp::spin_some(node);
+  // node->setPathPoints(path);
+  // rclcpp::spin_some(node);
+  // std::cin.get();
+  // node->setPathPoints(path_astar);
+  // rclcpp::spin_some(node);
+  // std::cin.get();
+  // node->setPathPoints(path_astar2);
+  // rclcpp::spin_some(node);
   // // Output path
   // // for (const auto &p : path)
   // // {
