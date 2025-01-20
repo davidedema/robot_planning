@@ -11,11 +11,21 @@ find_package(ament_cmake REQUIRED)
 # further dependencies manually.
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
+
 find_package(obstacles_msgs REQUIRED)
 find_package(Boost 1.74)
 find_package(visualization_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
+
+include_directories(
+  clipper
+)
+
+set(CLIPPER_SRC
+  clipper/clipper.cpp
+)
+
 
 add_executable(test_graph_generator
   src/simple_node.cpp
@@ -30,6 +40,7 @@ add_executable(test_shortest_path
   src/shortest_path.cpp
   src/combinatorial_based/map_construction.cpp
   src/combinatorial_based/marker_publishers/map_edges_publisher.cpp
+  ${CLIPPER_SRC}
   #src/utils/dubins.cpp
 )
 
@@ -61,6 +72,7 @@ ament_target_dependencies(test_shortest_path
   obstacles_msgs
   tf2
   tf2_ros
+
 )
 
 

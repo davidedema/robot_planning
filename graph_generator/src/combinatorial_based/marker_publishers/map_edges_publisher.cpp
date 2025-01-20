@@ -12,7 +12,7 @@ MapEdgePublisherNode::MapEdgePublisherNode(
     // Publish edges in a timer callback
     timer_ = this->create_wall_timer(
         std::chrono::milliseconds(500),
-        std::bind(&MapEdgePublisherNode::publishPoints, this));
+        std::bind(&MapEdgePublisherNode::publishEdges, this));
 }
 
 void MapEdgePublisherNode::publishEdges()

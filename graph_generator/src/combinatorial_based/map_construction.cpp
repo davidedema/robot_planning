@@ -207,7 +207,7 @@ void MapConstruction::set_borders(const geometry_msgs::msg::Polygon &msg)
 
     map_borders.outer().push_back(map_borders.outer().front());
 
-    // Inflate the polygon using Boost's buffer algorithm
+/*     // Inflate the polygon using Boost's buffer algorithm
     boost::geometry::strategy::buffer::distance_symmetric<double> distance_strategy(-SHELFINO_INFLATION);
     boost::geometry::strategy::buffer::join_miter join_strategy(SHELFINO_INFLATION);
     boost::geometry::strategy::buffer::end_flat end_strategy;                              // Round ends
@@ -220,7 +220,7 @@ void MapConstruction::set_borders(const geometry_msgs::msg::Polygon &msg)
                             side_strategy,
                             join_strategy,
                             end_strategy,
-                            circle_strategy);
+                            circle_strategy); */
 }
 
 polygon_t MapConstruction::get_borders()
@@ -282,26 +282,140 @@ pose_t MapConstruction::get_gate()
     return gates.at(0);
 }
 
+// Scale factor for Clipper (to convert floating-point to integers)
+
+
+// Convert Boost.Geometry polygon to Clipper polygon
+ClipperLib::Paths MapConstruction::boostToClipper(const polygon_t &boost_polygon)
+{
+    ClipperLib::Paths clipper_paths;
+    ClipperLib::Path clipper_path;
+
+    // Convert exterior ring
+    for (const auto &point : bg::exterior_ring(boost_polygon))
+    {
+        clipper_path.emplace_back(
+            static_cast<ClipperLib::cInt>(point.get<0>() * CLIPPER_SCALE_FACTOR),
+            static_cast<ClipperLib::cInt>(point.get<1>() * CLIPPER_SCALE_FACTOR));
+    }
+    clipper_paths.push_back(clipper_path);
+
+    // Convert interior rings
+    for (const auto &ring : bg::interior_rings(boost_polygon))
+    {
+        clipper_path.clear();
+        for (const auto &point : ring)
+        {
+            clipper_path.emplace_back(
+                static_cast<ClipperLib::cInt>(point.get<0>() * CLIPPER_SCALE_FACTOR),
+                static_cast<ClipperLib::cInt>(point.get<1>() * CLIPPER_SCALE_FACTOR));
+        }
+        clipper_paths.push_back(clipper_path);
+    }
+
+    return clipper_paths;
+}
+
+// Convert Clipper polygon back to Boost.Geometry polygon
+polygon_t MapConstruction::clipperToBoost(const ClipperLib::Paths &clipper_paths)
+{
+    polygon_t boost_polygon;
+
+    // Convert the first path to the exterior ring
+    if (!clipper_paths.empty())
+    {
+        for (const auto &point : clipper_paths[0])
+        {
+            bg::append(
+                bg::exterior_ring(boost_polygon),
+                point_t(point.X / CLIPPER_SCALE_FACTOR, point.Y / CLIPPER_SCALE_FACTOR));
+        }
+        bg::correct(boost_polygon); // Ensure the polygon is valid
+    }
+
+/*     // Convert the remaining paths to interior rings
+    for (std::size_t i = 1; i < clipper_paths.size(); ++i)
+    {
+        std::vector<point_t> interior_ring;
+        for (const auto &point : clipper_paths[i])
+        {
+            interior_ring.emplace_back(point.X / SCALE_FACTOR, point.Y / SCALE_FACTOR);
+        }
+        bg::interior_rings(boost_polygon).push_back(interior_ring);
+    } */
+
+    return boost_polygon;
+}
+
 multi_polygon_t MapConstruction::get_map()
 {
     if (!is_map_created)
     {
         for (auto polygon: obstacle_arr){
             clean_map.emplace_back(polygon);
+/*             polygon_t expanded_polygon;
+
+            const auto &outer_ring = boost::geometry::exterior_ring(polygon);
+            auto &expanded_outer_ring = boost::geometry:: exterior_ring(expanded_polygon);
+
+            std::size_t n = outer_ring.size();
+            for (std::size_t i = 0; i < n - 1; ++i)
+            { // -1 because the ring is closed
+                // Get current, previous, and next points
+                const auto &curr = outer_ring[i];
+                const auto &prev = outer_ring[(i + n - 1) % n];
+                const auto &next = outer_ring[(i + 1) % n];
+
+                // Compute outward normal (perpendicular to the edge)
+                double edge_dx = next.get<0>() - curr.get<0>();
+                double edge_dy = next.get<1>() - curr.get<1>();
+                double length = std::sqrt(edge_dx * edge_dx + edge_dy * edge_dy);
+                double normal_x = -edge_dy / length;
+                double normal_y = edge_dx / length;
+
+                // Compute expanded point position
+                double new_x = curr.get<0>() + SHELFINO_INFLATION * normal_x;
+                double new_y = curr.get<1>() + SHELFINO_INFLATION * normal_y;
+
+                // Add to expanded ring
+                expanded_outer_ring.push_back(point_t(new_x, new_y));
+            }
+
+            // Close the ring
+            expanded_outer_ring.push_back(expanded_outer_ring[0]);
+            inflated_map.emplace_back(expanded_polygon); */
+            ClipperLib::Paths clipper_poly1 = this->boostToClipper(polygon);
+            ClipperLib::Paths clipper_result;
+            ClipperLib::Clipper clipper;
+            ClipperLib::ClipperOffset clipperOffset;
+            clipperOffset.AddPaths(clipper_poly1, ClipperLib::jtMiter, ClipperLib::etClosedPolygon);
+            ClipperLib::Paths solution;
+            clipperOffset.Execute(solution, SHELFINO_INFLATION * 1000);
+            polygon_t inflated_polygon = this->clipperToBoost(solution);
+            inflated_map.emplace_back(inflated_polygon);
         }
 
-        // Inflate the polygon using Boost's buffer algorithm
-        boost::geometry::strategy::buffer::distance_symmetric<double> distance_strategy(SHELFINO_INFLATION);
-        boost::geometry::strategy::buffer::join_miter join_strategy(1.);
-        boost::geometry::strategy::buffer::end_flat end_strategy;                              // Round ends
-        boost::geometry::strategy::buffer::point_circle circle_strategy(CIRCLE_APPROXIMATION); // Circle approximation
-        boost::geometry::strategy::buffer::side_straight side_strategy;
-        boost::geometry::buffer(clean_map, inflated_map,
-                                distance_strategy,
-                                side_strategy,
-                                join_strategy,
-                                end_strategy,
-                                circle_strategy); // Straight sides
+        ClipperLib::Paths clipper_poly1 = this->boostToClipper(map_borders);
+        ClipperLib::Paths clipper_result;
+        ClipperLib::Clipper clipper;
+        ClipperLib::ClipperOffset clipperOffset;
+        clipperOffset.AddPaths(clipper_poly1, ClipperLib::jtMiter, ClipperLib::etClosedPolygon);
+        ClipperLib::Paths solution;
+        clipperOffset.Execute(solution, -SHELFINO_INFLATION * 1000);
+        inflated_map.emplace_back(this->clipperToBoost(solution));
+
+        /*         // Inflate the polygon using Boost's buffer algorithm
+                boost::geometry::strategy::buffer::distance_symmetric<double> distance_strategy(SHELFINO_INFLATION);
+                boost::geometry::strategy::buffer::join_miter join_strategy(1.);
+                boost::geometry::strategy::buffer::end_flat end_strategy;                              // Round ends
+                boost::geometry::strategy::buffer::point_circle circle_strategy(CIRCLE_APPROXIMATION); // Circle approximation
+                boost::geometry::strategy::buffer::side_straight side_strategy;
+                boost::geometry::buffer(clean_map, inflated_map,
+                                        distance_strategy,
+                                        side_strategy,
+                                        join_strategy,
+                                        end_strategy,
+                                        circle_strategy); // Straight sides */
         is_map_created = true;
         return inflated_map;
     }

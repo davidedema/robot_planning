@@ -48,15 +48,18 @@ bool is_tangent(const line_xy_t &line, const polygon_xy_t &border, const multipo
 std::vector<line_xy_t> find_bitangents(const multipolygon_xy_t &multipolygon)
 {
   std::vector<line_xy_t> bitangents;
-  auto inner_rings = multipolygon[0].inners();
+  std::vector<boost::geometry::model::ring<point_xy_t, true, true, std::vector, std::allocator>, std::allocator<boost::geometry::model::ring<point_xy_t, true, true, std::vector, std::allocator>>> rings;
+  for (const auto &poly : multipolygon){
+    rings.emplace_back(poly.outer());
+  }
 
-  for (const auto &ring1 : inner_rings)
+  for (const auto &ring1 : rings)
   {
     if (!bg::is_valid(ring1))
     {
       std::cerr << "The ring is not valid!" << std::endl;
     }
-    for (const auto &ring2 : inner_rings)
+    for (const auto &ring2 : rings)
     {
       if (!bg::is_valid(ring2))
       {
@@ -73,7 +76,7 @@ std::vector<line_xy_t> find_bitangents(const multipolygon_xy_t &multipolygon)
             bg::model::multi_point<point_xy_t> intersections;
             bool unwanted_intersection = false;
             
-            for (auto &other_ring : inner_rings)
+            for (auto &other_ring : rings)
             {
               if (&ring1 != &other_ring && &ring2 != &other_ring)
                 for (size_t i = 0; i < other_ring.size() - 1 && !unwanted_intersection; ++i) // check if there is internal intersection
@@ -132,8 +135,8 @@ polygon_xy_t convertPolygon(const polygon_t &polygon)
   }
 
   // Convert the inner rings
-  const auto &inner_rings = polygon.inners();
-  for (const auto &inner_ring : inner_rings)
+  const auto &rings = polygon.inners();
+  for (const auto &inner_ring : rings)
   {
     typename polygon_xy_t::ring_type inner_ring_xy;
     for (const auto &point : inner_ring)
@@ -181,20 +184,26 @@ int main(int argc, char **argv)
   RCLCPP_INFO(m->get_logger(), sService.c_str());
 
   RCLCPP_INFO(m->get_logger(),"\033[1;32m Map built\033[0m");
-  rclcpp::spin(std::make_shared<MapEdgePublisherNode>(map, "map_edges"));
+  //rclcpp::spin(std::make_shared<MapEdgePublisherNode>(map, "map_edges"));
 
   RCLCPP_INFO(m->get_logger(), "\033[1;32m Generating Graph\033[0m");
 
   auto remapped = convertMultiPolygon(map);
 
 
-  ss << "\033[1;32m Graph size " << remapped[0].inners().size() << "\033[0m";
+  ss << "\033[1;32m Number of obstacles " << remapped[0].inners().size() << "\033[0m";
 
   sService = ss.str();
   RCLCPP_INFO(m->get_logger(), sService.c_str());
 
   std::vector<line_xy_t> line;
   line = find_bitangents(remapped);
+
+  ss << "\033[1;32m Graph size " << line.size() << "\033[0m";
+  sService = ss.str();
+  RCLCPP_INFO(m->get_logger(), sService.c_str());
+
+
   rclcpp::spin(std::make_shared<SimpleEdgePublisherNode>(line, "bitangent_graph"));
 
   rclcpp::shutdown();
