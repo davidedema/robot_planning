@@ -393,16 +393,16 @@ int main(int argc, char **argv)
     RCLCPP_INFO(m->get_logger(), "\033[1;32m Added start shelfino 2\033[0m");
   }
 
-  // Multi agent path finding
+  //* Multi agent path finding
 
   CBS _cbs_shelfino1(_rrt.get_graph(), _rrt.get_lookup());
   CBS _cbs_shelfino2(_rrt.get_graph(), _rrt.get_lookup());
   bool path_found = false;
 
-  // while (!path_found)
-  // {
+  while (!path_found)
+  {
     // find the two shortest path
-    // bool collision = false;
+    bool collision = false;
     auto path_astar = _cbs_shelfino1.astar_search(start_shelfino1, *(path.end() - 1));
     auto path_astar2 = _cbs_shelfino2.astar_search(start_shelfino2, *(path.end() - 1));
 
@@ -410,20 +410,20 @@ int main(int argc, char **argv)
     auto shelfino1_path = _rrt.smooth_path(path_astar, map);
     auto shelfino2_path = _rrt.smooth_path(path_astar2, map);
 
-  //   size_t min_size = std::min(path_astar.size(), path_astar2.size());
-  //   // check if the two path have collisions
-  //   for (size_t i = 0; i < min_size; i++)
-  //   {
-  //     if (path_astar[i] == path_astar2[i])
-  //     {
-  //       collision = true;
-  //     }
-  //   }
-  //   if (!collision)
-  //   {
-  //     path_found = true;
-  //   }
-  // }
+    size_t min_size = std::min(path_astar.size(), path_astar2.size());
+    // check if the two path have collisions
+    for (size_t i = 0; i < min_size; i++)
+    {
+      if (path_astar[i] == path_astar2[i])
+      {
+        collision = true;
+      }
+    }
+    if (!collision)
+    {
+      path_found = true;
+    }
+  }
   // Display path
   if (DISPLAY_PATH_1)
   {
@@ -435,7 +435,7 @@ int main(int argc, char **argv)
     node->setPathPoints(shelfino2_path);
   }
 
-  // create dubinized version of the path
+  //* Create dubinized version of the path
   Dubins d({0.0, 0.0}, {0.0, 0.0}, kmax);
   shelfino1_path.erase(shelfino1_path.begin());
   shelfino1_path.erase(shelfino1_path.end());
@@ -447,81 +447,7 @@ int main(int argc, char **argv)
   auto shelfino2_nav2 = convertDubinsPathToNavPath(shelfino2_d_path);
   node->send_nav2(shelfino1_nav2, shelfino2_nav2);
 
-
-  // cout << "FINISHED" << endl;
-  // RCLCPP_INFO(m->get_logger(), "\033[1;32m A star runned, found path\033[0m");
-  // if (path_astar.empty())
-  // {
-  //   cout << "PATH EMPTY!" << endl;
-  // }
-  // else
-  // {
-  //   for (const auto &p : path_astar)
-  //   {
-  //     cout << p.at(0) << "  " << p.at(1) << endl;
-  //   }
-  // }
-  // ##########//
-  //  OLD CODE //
-  // ##########//
-
-  // for (const auto &p : path)
-  // {
-  //   path_points.push_back({p.at(0), p.at(1)});
-  // }
-
-  // Dubins d({0.0, 0.0}, {0.0, 0.0}, kmax);
-  // // Set points in the node
   rclcpp::spin(node);
-  // node->setPathPoints(path_points);
-
-  // // now find new smoothed path
-  // auto new_path = _rrt.smooth_path(path, map);
-
-  // // Convert path to 2D points
-  // for (const auto &p : path)
-  // {
-  //   cout << p.at(0) << "  " << p.at(1) << endl;
-  //   // path_points2.push_back({p.at(0), p.at(1)});
-  // }
-
-  // // rclcpp::sleep_for(std::chrono::milliseconds(1000)); // Sleep for 1 second
-  // node->setPathPoints(path);
-  // rclcpp::spin_some(node);
-  // std::cin.get();
-  // node->setPathPoints(path_astar);
-  // rclcpp::spin_some(node);
-  // std::cin.get();
-  // node->setPathPoints(path_astar2);
-  // rclcpp::spin_some(node);
-  // // Output path
-  // // for (const auto &p : path)
-  // // {
-  // //   cout << p.at(0) << "  " << p.at(1) << endl;
-  // // }
-
-  // for (const auto &p : path_points2)
-  // {
-  //   cout << p.at(0) << "  " << p.at(1) << endl;
-  // }
-  // cout << "  " << endl;
-  // path_points2.erase(path_points2.begin());
-  // path_points2.erase(path_points2.end());
-  // path_points.erase(path_points.begin());
-  // path_points.erase(path_points.end());
-
-  // for (const auto &p : path_points2)
-  // {
-  //   cout << p.at(0) << "  " << p.at(1) << endl;
-  // }
-  // auto dubins_curves = d.dubins_multi_point(start_shelfino1.at(0), start_shelfino1.at(1), m->get_pose1().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), path_points2, kmax, _rrt, map);
-  // node->setDubinsCurves(dubins_curves);
-
-  // auto nav2_path = convertDubinsPathToNavPath(dubins_curves);
-
-  // node->send_nav2(nav2_path);
-
-  // Keep the node alive
 
   rclcpp::shutdown();
   cout << "Done!" << endl;
