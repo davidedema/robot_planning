@@ -395,12 +395,12 @@ int main(int argc, char **argv)
 
   //* Multi agent path finding
 
-  Orchestrator _cbs_shelfino1(_rrt.get_graph(), _rrt.get_lookup());
-  Orchestrator _cbs_shelfino2(_rrt.get_graph(), _rrt.get_lookup());
+  Orchestrator _orchestrator_shelfino1(_rrt.get_graph(), _rrt.get_lookup());
+  Orchestrator _orchestrator_shelfino2(_rrt.get_graph(), _rrt.get_lookup());
 
   // find the two shortest path
-  auto path_astar1 = _cbs_shelfino1.astar_search(start_shelfino1, *(path.end() - 1));
-  auto path_astar2 = _cbs_shelfino2.astar_search(start_shelfino2, *(path.end() - 1));
+  auto path_astar1 = _orchestrator_shelfino1.astar_search(start_shelfino1, *(path.end() - 1));
+  auto path_astar2 = _orchestrator_shelfino2.astar_search(start_shelfino2, *(path.end() - 1));
 
   // smooth it
   auto shelfino1_path = _rrt.smooth_path(path_astar1, map);
@@ -423,33 +423,67 @@ int main(int argc, char **argv)
   shelfino1_path.erase(shelfino1_path.end());
   shelfino2_path.erase(shelfino2_path.begin());
   shelfino2_path.erase(shelfino2_path.end());
+
   auto shelfino1_d_path = d.dubins_multi_point(start_shelfino1.at(0), start_shelfino1.at(1), m->get_pose1().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino1_path, kmax, _rrt, map);
   auto shelfino2_d_path = d.dubins_multi_point(start_shelfino2.at(0), start_shelfino2.at(1), m->get_pose2().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino2_path, kmax, _rrt, map);
   auto shelfino1_nav2 = convertDubinsPathToNavPath(shelfino1_d_path);
   auto shelfino2_nav2 = convertDubinsPathToNavPath(shelfino2_d_path);
 
-  // display dubins curve
-  node->setDubinsCurves(shelfino1_d_path);
-  rclcpp::spin_some(node);
-  // stop execution with an input 
-  std::string input;
-  std::cout << "Press enter to continue" << std::endl;
-  std::getline(std::cin, input);
-  
-  node->setDubinsCurves(shelfino2_d_path);  
-  rclcpp::spin_some(node);
+  shelfino1_path.push_back({goal.at(0), goal.at(1)});
+  shelfino1_path.insert(shelfino1_path.begin(), {start_shelfino1.at(0), start_shelfino1.at(1)});
+  shelfino2_path.push_back({goal.at(0), goal.at(1)});
+  shelfino2_path.insert(shelfino2_path.begin(), {start_shelfino2.at(0), start_shelfino2.at(1)});
 
   // Check collisions between the two paths
+  bool collision = true;
+  bool first_reschedule = true;
+  while (collision)
+  {
+    int collision_index = _orchestrator_shelfino1.checkIntersection(shelfino1_nav2, shelfino2_nav2);
+    if (collision_index != -1)
+    {
+      // get the collision point as a KDNode_t
+      std::cout << "Collision found, reschedule the path" << std::endl;
+      KDNode_t collision_point = {shelfino1_nav2.poses.at(collision_index).pose.position.x, shelfino1_nav2.poses.at(collision_index).pose.position.y};
+      std::cout << collision_index << std::endl;
+      double score1 = _orchestrator_shelfino1.compute_score(shelfino1_nav2, collision_index);
+      double score2 = _orchestrator_shelfino2.compute_score(shelfino2_nav2, collision_index);
+      // print scores
+      std::cout << "Score for shelfino1: " << score1 << std::endl;
+      std::cout << "Score for shelfino2: " << score2 << std::endl;
 
-  if(_cbs_shelfino1.checkIntersection(shelfino1_nav2, shelfino2_nav2) != 0)
-  {
-    std::cout << "collision in radious" << std::endl;
+      // who has the largest score has to deviate the path
+      if (score1 > score2)
+      {
+        shelfino1_path = _orchestrator_shelfino1.reschedule_path(shelfino1_path, collision_point, 0.5, first_reschedule);
+        shelfino1_path.erase(shelfino1_path.begin());
+        shelfino1_path.erase(shelfino1_path.end());
+        shelfino1_d_path = d.dubins_multi_point(start_shelfino1.at(0), start_shelfino1.at(1), m->get_pose1().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino1_path, kmax, _rrt, map);
+        shelfino1_nav2 = convertDubinsPathToNavPath(shelfino1_d_path);
+        shelfino1_path.push_back({goal.at(0), goal.at(1)});
+        shelfino1_path.insert(shelfino1_path.begin(), {start_shelfino1.at(0), start_shelfino1.at(1)});
+      }
+      else
+      {
+        // reschedule for shelfino 2
+        shelfino2_path = _orchestrator_shelfino2.reschedule_path(shelfino2_path, collision_point, 0.5, first_reschedule);
+        shelfino2_path.erase(shelfino2_path.begin());
+        shelfino2_path.erase(shelfino2_path.end());
+        shelfino2_d_path = d.dubins_multi_point(start_shelfino2.at(0), start_shelfino2.at(1), m->get_pose2().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino2_path, kmax, _rrt, map);
+        shelfino2_nav2 = convertDubinsPathToNavPath(shelfino2_d_path);
+        shelfino2_path.push_back({goal.at(0), goal.at(1)});
+        shelfino2_path.insert(shelfino2_path.begin(), {start_shelfino2.at(0), start_shelfino2.at(1)});
+      }
+      node->send_nav2(shelfino1_nav2, shelfino2_nav2);
+      first_reschedule = false;
+    }
+    else
+    {
+      collision = false;
+      std::cout << "No collision, path could be safely executed" << std::endl;
+    }
   }
-  else
-  {
-    std::cout << "No collision, path could be safely executed" << std::endl;
-  }
-  
+
   node->send_nav2(shelfino1_nav2, shelfino2_nav2);
 
   rclcpp::spin(node);

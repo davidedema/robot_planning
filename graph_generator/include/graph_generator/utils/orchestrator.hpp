@@ -30,13 +30,11 @@ public:
   // Distructor
   ~Orchestrator();
 
-  // High level search
-  void check_conflicts(plan_t planA, plan_t planB);
-
-  // Low level search
   plan_t astar_search(KDNode_t &start, KDNode_t &goal);
   double get_total_cost(KDNode_t &node);
   double get_distance(KDNode_t &current, KDNode_t &child);
   size_t checkIntersection(const nav_msgs::msg::Path &path1, const nav_msgs::msg::Path &path2);
+  double compute_score(const nav_msgs::msg::Path &path, size_t collision_point);
+  std::vector<KDNode_t> reschedule_path(std::vector<KDNode_t> path, KDNode_t collision_point, double step_size, bool first_reschedule);
   
 };
