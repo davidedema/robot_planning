@@ -1,46 +1,9 @@
-#pragma once
-
-#include <vector>
-#include <boost/geometry.hpp>
-#include <boost/geometry/geometries/polygon.hpp>
-
-#include "clipper.hpp"
-#include "rclcpp/rclcpp.hpp"
-#include "tf2/LinearMath/Quaternion.h"
-#include "tf2/LinearMath/Matrix3x3.h"
-#include "rclcpp/qos.hpp"
-#include "obstacles_msgs/msg/obstacle_array_msg.hpp"
+#include "graph_generator/combinatorial_based/utilities.hpp"
 #include "geometry_msgs/msg/polygon.hpp"
 #include "geometry_msgs/msg/pose_array.hpp"
 #include "geometry_msgs/msg/pose.hpp"
 #include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
-
-using namespace ClipperLib;
-namespace bg = boost::geometry;
-
-#define SHELFINO_INFLATION 0.5
-#define CIRCLE_APPROXIMATION 36
-
-typedef boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> point_t;
-typedef boost::geometry::model::polygon<point_t> polygon_t;
-typedef boost::geometry::model::multi_polygon<polygon_t> multi_polygon_t;
-
-typedef boost::geometry::model::d2::point_xy<double> point_xy_t;
-typedef boost::geometry::model::polygon<point_xy_t> polygon_xy_t;
-
-
-typedef std::vector<double> pose_t;
-const double CLIPPER_SCALE_FACTOR = 1000.0;
-static const rmw_qos_profile_t qos_profile_custom = {
-    RMW_QOS_POLICY_HISTORY_KEEP_LAST,
-    10,
-    RMW_QOS_POLICY_RELIABILITY_RELIABLE,
-    RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL,
-    RMW_QOS_DEADLINE_DEFAULT,
-    RMW_QOS_LIFESPAN_DEFAULT,
-    RMW_QOS_POLICY_LIVELINESS_SYSTEM_DEFAULT,
-    RMW_QOS_LIVELINESS_LEASE_DURATION_DEFAULT,
-    false};
+#include "obstacles_msgs/msg/obstacle_array_msg.hpp"
 
 class MapConstruction : public rclcpp::Node
 {
@@ -66,7 +29,10 @@ public:
     bool pos3_r_;
 
     // flag for inflated_map creation
-    bool is_map_created;
+    bool is_inflated_map_created;
+
+    // flag for clean_map creation
+    bool is_clean_map_created;
 
     // setter for inflated_map
     void set_obstacles(const obstacles_msgs::msg::ObstacleArrayMsg &msg);
@@ -87,9 +53,12 @@ public:
     pose_t get_pose3();
 
     // get the inflated_map (polygon with holes replacing the obstacles)
-    boost::geometry::model::multi_polygon<polygon_t> get_map();
+    boost::geometry::model::multi_polygon<polygon_t> get_inflated_map();
+
+    boost::geometry::model::multi_polygon<polygon_t> get_clean_map();
+
     ClipperLib::Paths boostToClipper(const polygon_t &boost_polygon);
-    polygon_t clipperToBoost(const ClipperLib::Paths &clipper_paths);
+    polygon_t clipperToBoost(const ClipperLib::Path &clipper_paths);
 
 private:
     // inflated_map values

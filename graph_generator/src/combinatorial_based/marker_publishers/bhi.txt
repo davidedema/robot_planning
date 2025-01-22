@@ -1,3 +1,0 @@
-/home/emmavico/Programmi/Universita/RobotPlanning/Progetto/src/graph_generator/src/shortest_path.cpp: In function ‘std::vector<boost::geometry::model::linestring<boost::geometry::model::d2::point_xy<double> > > find_bitangents(const multipolygon_xy_t&)’:
-/home/emmavico/Programmi/Universita/RobotPlanning/Progetto/src/graph_generator/src/shortest_path.cpp:53:37: error: invalid initialization of reference of type ‘const polygon_xy_t&’ {aka ‘const boost::geometry::model::polygon<boost::geometry::model::d2::point_xy<double> >&’} from expression of type ‘const boost::geometry::model::ring<boost::geometry::model::d2::point_xy<double>, true, true, std::vector, std::allocator>’
-   53 |           if (is_tangent(candidate, poly1) && is_tangent(candidate, poly2))

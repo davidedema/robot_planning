@@ -3,17 +3,8 @@
 #include <geometry_msgs/msg/point.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <visualization_msgs/msg/marker.hpp>
-#include "graph_generator/combinatorial_based/map_construction.hpp"
+#include "graph_generator/combinatorial_based/utilities.hpp"
 
-namespace bg = boost::geometry;
-
-typedef  bg::model::multi_polygon<polygon_t> multi_polygon_t;
-typedef bg::model::segment<point_t> Line;
-
-using point_xy_t = boost::geometry::model::d2::point_xy<double>;
-using polygon_xy_t = boost::geometry::model::polygon<point_xy_t>;
-using multipolygon_xy_t = bg::model::multi_polygon<polygon_xy_t>;
-using line_xy_t = bg::model::linestring<point_xy_t>;
 
 class MapEdgePublisherNode : public rclcpp::Node
 {
@@ -48,4 +39,19 @@ private:
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr edge_publisher_;
     rclcpp::TimerBase::SharedPtr timer_;
     void publishEdges();
+};
+
+class SimplePointPublisherNode : public rclcpp::Node
+{
+public:
+    std::vector<point_t> points_;
+    std::string topic_;
+
+    SimplePointPublisherNode(
+        std::vector<point_t> points_, std::string topic);
+
+private:
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr point_publisher_;
+    rclcpp::TimerBase::SharedPtr timer_;
+    void publishPoints();
 };

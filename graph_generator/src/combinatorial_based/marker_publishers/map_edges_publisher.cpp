@@ -2,7 +2,7 @@
 
 MapEdgePublisherNode::MapEdgePublisherNode(
     boost::geometry::model::multi_polygon<polygon_t> multi_polygon, std::string topic)
-    : Node("map_publisher")
+    : Node(topic)
 {
     multi_polygon_ = multi_polygon;
     topic_ = topic;
@@ -154,7 +154,7 @@ void MapEdgePublisherNode::publishPoints()
 
 SimpleEdgePublisherNode::SimpleEdgePublisherNode(
     std::vector<line_xy_t> edges, std::string topic)
-    : Node("edge_pubslisher")
+    : Node(topic)
 {
     edges_ = edges;
     topic_ = topic;
@@ -209,5 +209,61 @@ void SimpleEdgePublisherNode::publishEdges()
 
         // Publish marker
         edge_publisher_->publish(marker);
+    }
+}
+
+/////Simple points Publisher//////////////////////////////////////////////
+
+SimplePointPublisherNode::SimplePointPublisherNode(
+    std::vector<point_t> points, std::string topic)
+    : Node(topic)
+{
+    points_ = points;
+    topic_ = topic;
+    // Create publisher
+    point_publisher_ =
+        this->create_publisher<visualization_msgs::msg::Marker>(topic_, 10);
+    // Publish edges in a timer callback
+    timer_ = this->create_wall_timer(
+        std::chrono::milliseconds(500),
+        std::bind(&SimplePointPublisherNode::publishPoints, this));
+}
+
+void SimplePointPublisherNode::publishPoints()
+{
+    if (point_publisher_->get_subscription_count() > 0 ||
+        point_publisher_->get_intra_process_subscription_count() > 0)
+    {
+
+        // Prepare Marker message
+        visualization_msgs::msg::Marker marker;
+        marker.header.frame_id = "map"; // Set to the appropriate frame
+        marker.header.stamp = this->get_clock()->now();
+        marker.ns = "points";
+        marker.id = 0; // You can increment this if you want to add multiple markers
+        marker.type = visualization_msgs::msg::Marker::POINTS;
+        marker.action = visualization_msgs::msg::Marker::ADD;
+
+        // Set the point size (in RViz)
+        marker.scale.x = 0.1; // Size of the points
+        marker.scale.y = 0.1;
+        marker.color.a = 1.0; // Fully opaque
+        marker.color.r = 1.0; // Red color
+
+        for (std::size_t i = 0; i < points_.size(); ++i)
+        {
+            auto point = points_[i];
+
+            // Convert to geometry_msgs::msg::Point
+            geometry_msgs::msg::Point ros_point1;
+            ros_point1.x = bg::get<0>(point);
+            ros_point1.y = bg::get<1>(point);
+            ros_point1.z = 0.0; // Assum 2D points
+            // Add to marker
+            marker.points.push_back(ros_point1);
+        }
+
+        // Publish marker
+        point_publisher_->publish(marker);
     }
 }

@@ -1,3 +1,5 @@
+#include "graph_generator/combinatorial_based/utilities.hpp"
+
 #include "graph_generator/combinatorial_based/map_construction.hpp"
 
 MapConstruction::MapConstruction() : Node("MapConstruction")
@@ -153,36 +155,11 @@ void MapConstruction::set_obstacles(const obstacles_msgs::msg::ObstacleArrayMsg 
         }
     }
 
-    //this->inflate_obstacles();
+    // this->inflate_obstacles();
 }
 
 void MapConstruction::inflate_obstacles()
 {
-    /* for (auto &obstacle : obstacle_arr)
-    {
-        if (!boost::geometry::equals(obstacle.outer().front(), obstacle.outer().back()))
-        {
-            obstacle.outer().push_back(obstacle.outer().front());
-        }
-
-        boost::geometry::model::multi_polygon<polygon_t> inflated_polygon;
-        // Inflate the polygon using Boost's buffer algorithm
-        boost::geometry::strategy::buffer::distance_symmetric<double> distance_strategy(SHELFINO_INFLATION);
-        boost::geometry::strategy::buffer::join_miter join_strategy(SHELFINO_INFLATION);
-        boost::geometry::strategy::buffer::end_flat end_strategy;         // Round ends
-        boost::geometry::strategy::buffer::point_circle circle_strategy(CIRCLE_APPROXIMATION); // Circle approximation
-        boost::geometry::strategy::buffer::side_straight side_strategy;      // Straight sides
-
-        boost::geometry::buffer(obstacle, inflated_polygon,
-                                distance_strategy,
-                                side_strategy,
-                                join_strategy,
-                                end_strategy,
-                                circle_strategy);
-
-        // Add the inflated polygon to the result array
-        inflated_obstacles.push_back(inflated_polygon);
-    } */
 }
 
 std::vector<polygon_t> MapConstruction::get_obstacles()
@@ -207,20 +184,20 @@ void MapConstruction::set_borders(const geometry_msgs::msg::Polygon &msg)
 
     map_borders.outer().push_back(map_borders.outer().front());
 
-/*     // Inflate the polygon using Boost's buffer algorithm
-    boost::geometry::strategy::buffer::distance_symmetric<double> distance_strategy(-SHELFINO_INFLATION);
-    boost::geometry::strategy::buffer::join_miter join_strategy(SHELFINO_INFLATION);
-    boost::geometry::strategy::buffer::end_flat end_strategy;                              // Round ends
-    boost::geometry::strategy::buffer::point_circle circle_strategy(CIRCLE_APPROXIMATION); // Circle approximation
-    boost::geometry::strategy::buffer::side_straight side_strategy;                        // Straight sides
-                                                                                           // Straight sides
+    /*     // Inflate the polygon using Boost's buffer algorithm
+        boost::geometry::strategy::buffer::distance_symmetric<double> distance_strategy(-SHELFINO_INFLATION);
+        boost::geometry::strategy::buffer::join_miter join_strategy(SHELFINO_INFLATION);
+        boost::geometry::strategy::buffer::end_flat end_strategy;                              // Round ends
+        boost::geometry::strategy::buffer::point_circle circle_strategy(CIRCLE_APPROXIMATION); // Circle approximation
+        boost::geometry::strategy::buffer::side_straight side_strategy;                        // Straight sides
+                                                                                               // Straight sides
 
-    boost::geometry::buffer(map_borders, inflated_borders,
-                            distance_strategy,
-                            side_strategy,
-                            join_strategy,
-                            end_strategy,
-                            circle_strategy); */
+        boost::geometry::buffer(map_borders, inflated_borders,
+                                distance_strategy,
+                                side_strategy,
+                                join_strategy,
+                                end_strategy,
+                                circle_strategy); */
 }
 
 polygon_t MapConstruction::get_borders()
@@ -284,7 +261,6 @@ pose_t MapConstruction::get_gate()
 
 // Scale factor for Clipper (to convert floating-point to integers)
 
-
 // Convert Boost.Geometry polygon to Clipper polygon
 ClipperLib::Paths MapConstruction::boostToClipper(const polygon_t &boost_polygon)
 {
@@ -317,106 +293,187 @@ ClipperLib::Paths MapConstruction::boostToClipper(const polygon_t &boost_polygon
 }
 
 // Convert Clipper polygon back to Boost.Geometry polygon
-polygon_t MapConstruction::clipperToBoost(const ClipperLib::Paths &clipper_paths)
+polygon_t MapConstruction::clipperToBoost(const ClipperLib::Path &clipper_paths)
 {
     polygon_t boost_polygon;
 
-    // Convert the first path to the exterior ring
-    if (!clipper_paths.empty())
+    for (const auto &point : clipper_paths)
     {
-        for (const auto &point : clipper_paths[0])
-        {
-            bg::append(
-                bg::exterior_ring(boost_polygon),
-                point_t(point.X / CLIPPER_SCALE_FACTOR, point.Y / CLIPPER_SCALE_FACTOR));
-        }
-        bg::correct(boost_polygon); // Ensure the polygon is valid
+        bg::append(
+            bg::exterior_ring(boost_polygon),
+            point_t(point.X / CLIPPER_SCALE_FACTOR, point.Y / CLIPPER_SCALE_FACTOR));
     }
-
-/*     // Convert the remaining paths to interior rings
-    for (std::size_t i = 1; i < clipper_paths.size(); ++i)
-    {
-        std::vector<point_t> interior_ring;
-        for (const auto &point : clipper_paths[i])
-        {
-            interior_ring.emplace_back(point.X / SCALE_FACTOR, point.Y / SCALE_FACTOR);
-        }
-        bg::interior_rings(boost_polygon).push_back(interior_ring);
-    } */
+    bg::correct(boost_polygon); // Ensure the polygon is valid
 
     return boost_polygon;
 }
 
-multi_polygon_t MapConstruction::get_map()
+multi_polygon_t MapConstruction::get_clean_map()
 {
-    if (!is_map_created)
+    if (!is_clean_map_created)
     {
-        for (auto polygon: obstacle_arr){
+        //clean_map.emplace_back(map_borders);
+
+        for (auto polygon : obstacle_arr)
+        {
             clean_map.emplace_back(polygon);
-/*             polygon_t expanded_polygon;
-
-            const auto &outer_ring = boost::geometry::exterior_ring(polygon);
-            auto &expanded_outer_ring = boost::geometry:: exterior_ring(expanded_polygon);
-
-            std::size_t n = outer_ring.size();
-            for (std::size_t i = 0; i < n - 1; ++i)
-            { // -1 because the ring is closed
-                // Get current, previous, and next points
-                const auto &curr = outer_ring[i];
-                const auto &prev = outer_ring[(i + n - 1) % n];
-                const auto &next = outer_ring[(i + 1) % n];
-
-                // Compute outward normal (perpendicular to the edge)
-                double edge_dx = next.get<0>() - curr.get<0>();
-                double edge_dy = next.get<1>() - curr.get<1>();
-                double length = std::sqrt(edge_dx * edge_dx + edge_dy * edge_dy);
-                double normal_x = -edge_dy / length;
-                double normal_y = edge_dx / length;
-
-                // Compute expanded point position
-                double new_x = curr.get<0>() + SHELFINO_INFLATION * normal_x;
-                double new_y = curr.get<1>() + SHELFINO_INFLATION * normal_y;
-
-                // Add to expanded ring
-                expanded_outer_ring.push_back(point_t(new_x, new_y));
-            }
-
-            // Close the ring
-            expanded_outer_ring.push_back(expanded_outer_ring[0]);
-            inflated_map.emplace_back(expanded_polygon); */
-            ClipperLib::Paths clipper_poly1 = this->boostToClipper(polygon);
-            ClipperLib::Paths clipper_result;
-            ClipperLib::Clipper clipper;
-            ClipperLib::ClipperOffset clipperOffset;
-            clipperOffset.AddPaths(clipper_poly1, ClipperLib::jtMiter, ClipperLib::etClosedPolygon);
-            ClipperLib::Paths solution;
-            clipperOffset.Execute(solution, SHELFINO_INFLATION * 1000);
-            polygon_t inflated_polygon = this->clipperToBoost(solution);
-            inflated_map.emplace_back(inflated_polygon);
         }
 
+        is_clean_map_created = true;
+        return clean_map;
+    }
+    else
+    {
+        return clean_map;
+    }
+}
+
+bool doPolygonsIntersect(const ClipperLib::Path &poly1, const ClipperLib::Path &poly2)
+{
+    // Step 1: Initialize Clipper
+    ClipperLib::Clipper clipper;
+
+    // Step 2: Add the polygons
+    clipper.AddPath(poly1, ClipperLib::ptSubject, true); // "true" for closed polygons
+    clipper.AddPath(poly2, ClipperLib::ptClip, true);
+
+    // Step 3: Check for intersection
+    ClipperLib::Paths intersectionResult;
+    clipper.Execute(ClipperLib::ctIntersection, intersectionResult);
+
+    // Step 4: Return true if intersection exists
+    return !intersectionResult.empty();
+}
+
+multi_polygon_t MapConstruction::get_inflated_map()
+{
+    if (!is_inflated_map_created)
+    {
         ClipperLib::Paths clipper_poly1 = this->boostToClipper(map_borders);
         ClipperLib::Paths clipper_result;
-        ClipperLib::Clipper clipper;
+        ClipperLib::Clipper clipper_border;
         ClipperLib::ClipperOffset clipperOffset;
         clipperOffset.AddPaths(clipper_poly1, ClipperLib::jtMiter, ClipperLib::etClosedPolygon);
-        ClipperLib::Paths solution;
-        clipperOffset.Execute(solution, -SHELFINO_INFLATION * 1000);
-        inflated_map.emplace_back(this->clipperToBoost(solution));
+        ClipperLib::Paths paths_inflated_border;
+        clipperOffset.Execute(paths_inflated_border, -SHELFINO_INFLATION * 1000);
+        // inflated_map.emplace_back(this->clipperToBoost(paths_inflated_border[0]));
 
-        /*         // Inflate the polygon using Boost's buffer algorithm
-                boost::geometry::strategy::buffer::distance_symmetric<double> distance_strategy(SHELFINO_INFLATION);
-                boost::geometry::strategy::buffer::join_miter join_strategy(1.);
-                boost::geometry::strategy::buffer::end_flat end_strategy;                              // Round ends
-                boost::geometry::strategy::buffer::point_circle circle_strategy(CIRCLE_APPROXIMATION); // Circle approximation
-                boost::geometry::strategy::buffer::side_straight side_strategy;
-                boost::geometry::buffer(clean_map, inflated_map,
-                                        distance_strategy,
-                                        side_strategy,
-                                        join_strategy,
-                                        end_strategy,
-                                        circle_strategy); // Straight sides */
-        is_map_created = true;
+        // inflate obstacles
+        ClipperLib::Paths inflated_vect_paths;
+        for (auto polygon : obstacle_arr)
+        {
+            ClipperLib::Paths inflated_path_obstacles;
+            ClipperLib::Paths clipper_result;
+            ClipperLib::Clipper clipper_inflate_obstacles;
+            ClipperLib::Paths clipper_poly1 = this->boostToClipper(polygon);
+            ClipperLib::ClipperOffset clipperOffset;
+            clipperOffset.AddPaths(clipper_poly1, ClipperLib::jtMiter, ClipperLib::etClosedPolygon);
+            clipperOffset.Execute(inflated_path_obstacles, SHELFINO_INFLATION * 1000);
+            inflated_vect_paths.emplace_back(inflated_path_obstacles[0]);
+        }
+
+  /*       // check if the inflated obstacles are intersecting, if they do, uninize them
+        bool intersecting = true;
+        while (intersecting)
+        {
+            intersecting = false;
+            std::vector<ClipperLib::Path> new_inflated_vect_paths;
+            std::vector<ClipperLib::Path> to_ignore;
+            for (auto &inflated_1 : inflated_vect_paths)
+            {
+                bool intersect_polygon = false;
+                for (auto &inflated_2 : inflated_vect_paths)
+                {
+                    // if the polygon was unionized before, ignore it
+                    int cnt1 = count(to_ignore.begin(), to_ignore.end(), inflated_1);
+                    int cnt2 = count(to_ignore.begin(), to_ignore.end(), inflated_2);
+
+                    if (inflated_1 != inflated_2 && cnt1+cnt2==0)
+                    {
+                        if (doPolygonsIntersect(inflated_1, inflated_2))
+                        {
+                            intersect_polygon = true;
+                            intersecting = true;
+                            to_ignore.emplace_back(inflated_2);
+                            to_ignore.emplace_back(inflated_1);
+                        }
+                        ClipperLib::Clipper clipper_for_union;
+                        ClipperLib::Paths result;
+                        clipper_for_union.AddPath(inflated_1, ClipperLib::ptSubject, true);
+                        clipper_for_union.AddPath(inflated_2, ClipperLib::ptClip, true);
+                        clipper_for_union.Execute(ClipperLib::ctUnion, result);
+                        ClipperLib::Path unionized;
+
+                        std::cout << "Union of polygons:" << std::endl;
+                        for (const auto &path : result)
+                        {
+                            std::cout << "Path: ";
+                            for (const auto &point : path)
+                            {
+                                std::cout << "(" << point.X << ", " << point.Y << ") ";
+                                unionized.emplace_back(point);
+                            }
+                            std::cout << std::endl;
+                        }
+                        new_inflated_vect_paths.emplace_back(unionized);
+                        break;
+                    }
+                }
+                if (!intersect_polygon)
+                    new_inflated_vect_paths.emplace_back(inflated_1);
+            }
+            inflated_vect_paths = new_inflated_vect_paths;
+
+            std::cout << "Number of polygons" << inflated_vect_paths.size() << std::endl;
+        } */
+
+        ClipperLib::Clipper clipper_for_union;
+        ClipperLib::Paths result;
+        clipper_for_union.AddPath(inflated_vect_paths[0], ClipperLib::ptSubject, true);
+        clipper_for_union.AddPaths(inflated_vect_paths, ClipperLib::ptClip, true);
+        clipper_for_union.Execute(ClipperLib::ctUnion, result);
+
+        std::vector<polygon_t> inflated_polygons;
+        for (auto const &clip_poly : inflated_vect_paths)
+        {
+            inflated_polygons.emplace_back(this->clipperToBoost(clip_poly));
+        }
+        // unionizing code
+        /*         bool intersecting = true;
+                while (intersecting)
+                {
+                    intersecting = false;
+                    std::vector<polygon_t> new_inflated_polygons;
+                    for (auto inflated_1 : inflated_polygons)
+                    {
+                        bool intersect_polygon = false;
+                        for (auto inflated_2 : inflated_polygons)
+                        {
+                            if (&inflated_1 != &inflated_2)
+                            {
+                                if (bg::intersects(inflated_1, inflated_2))
+                                {
+                                    intersect_polygon = true;
+                                    intersecting = true;
+                                }
+                                std::vector<polygon_t> unionized;
+                                bg::union_(inflated_1, inflated_2, unionized);
+                                new_inflated_polygons.emplace_back(unionized[0]);
+                                break;
+                            }
+                        }
+                        if (!intersect_polygon)
+                            new_inflated_polygons.emplace_back(inflated_1);
+                    }
+                    inflated_polygons = new_inflated_polygons;
+                } */
+
+        for (auto const &clip_poly : inflated_polygons)
+        {
+            inflated_map.emplace_back(clip_poly);
+        }
+
+        is_inflated_map_created = true;
         return inflated_map;
     }
     else
