@@ -1,33 +1,33 @@
-#include "graph_generator/utils/cbs.hpp"
+#include "graph_generator/utils/orchestrator.hpp"
 
-CBS::CBS(Graph g, std::map<KDNode_t, vertex_t> gl)
+Orchestrator::Orchestrator(Graph g, std::map<KDNode_t, vertex_t> gl)
 {
   this->g = g;
   this->graph_lookup = gl;
 }
 
-CBS::~CBS() {}
+Orchestrator::~Orchestrator() {}
 
-void CBS::check_conflicts(plan_t planA, plan_t planB)
+void Orchestrator::check_conflicts(plan_t planA, plan_t planB)
 {
 }
 
-double CBS::get_total_cost(KDNode_t &node)
+double Orchestrator::get_total_cost(KDNode_t &node)
 {
   return cost_lookup[node] + g[graph_lookup[node]].l2_dist_h;
 }
 
-double CBS::get_distance(KDNode_t &current, KDNode_t &child)
+double Orchestrator::get_distance(KDNode_t &current, KDNode_t &child)
 {
   return sqrt(pow(current.at(0) - child.at(0), 2) + pow(current.at(1) - child.at(1), 2));
 }
 
-plan_t CBS::astar_search(KDNode_t &start, KDNode_t &goal)
+plan_t Orchestrator::astar_search(KDNode_t &start, KDNode_t &goal)
 {
   plan_t plan;
 
-  std::vector<KDNode_t> open;                           // open list
-  std::vector<KDNode_t> close;                          // closed list
+  std::vector<KDNode_t> open;  // open list
+  std::vector<KDNode_t> close; // closed list
 
   // std::cout << "THE GOAL SPECIFIED IS: " << goal.at(0) << "  " << goal.at(1) << std::endl;
 
@@ -57,7 +57,7 @@ plan_t CBS::astar_search(KDNode_t &start, KDNode_t &goal)
     // std::cout << "\tWITH TOTAL COST: " << this->get_total_cost(current) << std::endl;
     // If current is goal, reconstruct path and return
     if (current == goal)
-    { 
+    {
       // Reconstruct path from goal to start
       while (current != start)
       {
@@ -111,4 +111,26 @@ plan_t CBS::astar_search(KDNode_t &start, KDNode_t &goal)
 
   // If we reach here, no path was found
   return plan; // Empty plan
+}
+
+size_t Orchestrator::checkIntersection(const nav_msgs::msg::Path &path1, const nav_msgs::msg::Path &path2)
+{
+  // take the path with minimum number of points
+  auto path1_size = path1.poses.size();
+  auto path2_size = path2.poses.size();
+  auto min_size = std::min(path1_size, path2_size);
+
+  for (size_t i = 0; i < min_size; i++)
+  {
+    auto p1 = path1.poses.at(i).pose.position;
+    auto p2 = path2.poses.at(i).pose.position;
+    // check the collision between the two points
+    // given the radius of the robot
+    if (sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2)) < 1.6)
+    {
+      return i;
+    }
+  }
+
+  return 0;
 }

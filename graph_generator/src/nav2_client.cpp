@@ -133,11 +133,11 @@ int main(int argc, char *argv[])
       goal1_msg.controller_id = "FollowPath";
       goal2_msg.controller_id = "FollowPath";
       node->client1_ptr_->async_send_goal(goal1_msg);
-      // node->client2_ptr_->async_send_goal(goal2_msg);
+      node->client2_ptr_->async_send_goal(goal2_msg);
       rclcpp::sleep_for(std::chrono::milliseconds(500));
       // ensure that the path is sent
       node->client1_ptr_->async_send_goal(goal1_msg);
-      // node->client2_ptr_->async_send_goal(goal2_msg);
+      node->client2_ptr_->async_send_goal(goal2_msg);
       node->waypoints1_received = false;
       node->waypoints2_received = false;
     }

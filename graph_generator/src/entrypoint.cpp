@@ -10,7 +10,7 @@
 #include "graph_generator/sampling_based/utils/kdtree.hpp"
 
 #include "graph_generator/utils/dubins.hpp"
-#include "graph_generator/utils/cbs.hpp"
+#include "graph_generator/utils/orchestrator.hpp"
 
 #include <nav_msgs/msg/path.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
@@ -395,35 +395,17 @@ int main(int argc, char **argv)
 
   //* Multi agent path finding
 
-  CBS _cbs_shelfino1(_rrt.get_graph(), _rrt.get_lookup());
-  CBS _cbs_shelfino2(_rrt.get_graph(), _rrt.get_lookup());
-  bool path_found = false;
+  Orchestrator _cbs_shelfino1(_rrt.get_graph(), _rrt.get_lookup());
+  Orchestrator _cbs_shelfino2(_rrt.get_graph(), _rrt.get_lookup());
 
-  while (!path_found)
-  {
-    // find the two shortest path
-    bool collision = false;
-    auto path_astar = _cbs_shelfino1.astar_search(start_shelfino1, *(path.end() - 1));
-    auto path_astar2 = _cbs_shelfino2.astar_search(start_shelfino2, *(path.end() - 1));
+  // find the two shortest path
+  auto path_astar1 = _cbs_shelfino1.astar_search(start_shelfino1, *(path.end() - 1));
+  auto path_astar2 = _cbs_shelfino2.astar_search(start_shelfino2, *(path.end() - 1));
 
-    // smooth it
-    auto shelfino1_path = _rrt.smooth_path(path_astar, map);
-    auto shelfino2_path = _rrt.smooth_path(path_astar2, map);
+  // smooth it
+  auto shelfino1_path = _rrt.smooth_path(path_astar1, map);
+  auto shelfino2_path = _rrt.smooth_path(path_astar2, map);
 
-    size_t min_size = std::min(path_astar.size(), path_astar2.size());
-    // check if the two path have collisions
-    for (size_t i = 0; i < min_size; i++)
-    {
-      if (path_astar[i] == path_astar2[i])
-      {
-        collision = true;
-      }
-    }
-    if (!collision)
-    {
-      path_found = true;
-    }
-  }
   // Display path
   if (DISPLAY_PATH_1)
   {
@@ -442,9 +424,32 @@ int main(int argc, char **argv)
   shelfino2_path.erase(shelfino2_path.begin());
   shelfino2_path.erase(shelfino2_path.end());
   auto shelfino1_d_path = d.dubins_multi_point(start_shelfino1.at(0), start_shelfino1.at(1), m->get_pose1().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino1_path, kmax, _rrt, map);
-  auto shelfino2_d_path = d.dubins_multi_point(start_shelfino2.at(0), start_shelfino2.at(1), m->get_pose1().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino2_path, kmax, _rrt, map);
+  auto shelfino2_d_path = d.dubins_multi_point(start_shelfino2.at(0), start_shelfino2.at(1), m->get_pose2().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino2_path, kmax, _rrt, map);
   auto shelfino1_nav2 = convertDubinsPathToNavPath(shelfino1_d_path);
   auto shelfino2_nav2 = convertDubinsPathToNavPath(shelfino2_d_path);
+
+  // display dubins curve
+  node->setDubinsCurves(shelfino1_d_path);
+  rclcpp::spin_some(node);
+  // stop execution with an input 
+  std::string input;
+  std::cout << "Press enter to continue" << std::endl;
+  std::getline(std::cin, input);
+  
+  node->setDubinsCurves(shelfino2_d_path);  
+  rclcpp::spin_some(node);
+
+  // Check collisions between the two paths
+
+  if(_cbs_shelfino1.checkIntersection(shelfino1_nav2, shelfino2_nav2) != 0)
+  {
+    std::cout << "collision in radious" << std::endl;
+  }
+  else
+  {
+    std::cout << "No collision, path could be safely executed" << std::endl;
+  }
+  
   node->send_nav2(shelfino1_nav2, shelfino2_nav2);
 
   rclcpp::spin(node);
