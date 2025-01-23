@@ -106,35 +106,15 @@ int main(int argc, char *argv[])
       auto goal2_msg = FollowPath::Goal();
       goal1_msg.path = node->full_path1;
       goal2_msg.path = node->full_path2;
-      for (size_t i = 0; i < goal1_msg.path.poses.size(); i++)
-      {
-        std::cout << "Position: " << goal1_msg.path.poses[i].pose.position.x
-                  << ", " << goal1_msg.path.poses[i].pose.position.y
-                  << std::endl;
-        std::cout << "Orientation: "
-                  << goal1_msg.path.poses[i].pose.orientation.x << ", "
-                  << goal1_msg.path.poses[i].pose.orientation.y << ", "
-                  << goal1_msg.path.poses[i].pose.orientation.z << ", "
-                  << goal1_msg.path.poses[i].pose.orientation.w << std::endl;
-        std::cout << "---------------------" << std::endl;
-      }
-      for (size_t i = 0; i < goal2_msg.path.poses.size(); i++)
-      {
-        std::cout << "Position: " << goal2_msg.path.poses[i].pose.position.x
-                  << ", " << goal2_msg.path.poses[i].pose.position.y
-                  << std::endl;
-        std::cout << "Orientation: "
-                  << goal2_msg.path.poses[i].pose.orientation.x << ", "
-                  << goal2_msg.path.poses[i].pose.orientation.y << ", "
-                  << goal2_msg.path.poses[i].pose.orientation.z << ", "
-                  << goal2_msg.path.poses[i].pose.orientation.w << std::endl;
-        std::cout << "---------------------" << std::endl;
-      }
       goal1_msg.controller_id = "FollowPath";
       goal2_msg.controller_id = "FollowPath";
       node->client1_ptr_->async_send_goal(goal1_msg);
       node->client2_ptr_->async_send_goal(goal2_msg);
-      rclcpp::sleep_for(std::chrono::milliseconds(500));
+      rclcpp::sleep_for(std::chrono::milliseconds(300));
+      // ensure that the path is sent
+      node->client1_ptr_->async_send_goal(goal1_msg);
+      node->client2_ptr_->async_send_goal(goal2_msg);
+      rclcpp::sleep_for(std::chrono::milliseconds(300));
       // ensure that the path is sent
       node->client1_ptr_->async_send_goal(goal1_msg);
       node->client2_ptr_->async_send_goal(goal2_msg);

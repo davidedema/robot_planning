@@ -373,7 +373,7 @@ int main(int argc, char **argv)
     if (_rrt.is_goal(new_point))
     {
       path = _rrt.get_path(new_point);
-      // break;
+      break;
     }
   }
 
@@ -387,22 +387,27 @@ int main(int argc, char **argv)
 
   // Add shelfino 2 start_shelfino1 node to the graph
   auto nearest2 = _rrt.get_nn(start_shelfino2, 1);
-  cout << nearest2.at(0) << "  " << nearest2.at(1) << endl;
   if (_rrt.attach_node(start_shelfino2, nearest2, map))
   {
     RCLCPP_INFO(m->get_logger(), "\033[1;32m Added start shelfino 2\033[0m");
   }
 
+  RCLCPP_INFO(m->get_logger(), "\033[1;32m Starting finding the joint plan...\033[0m");
   //* Multi agent path finding
-
   Orchestrator _orchestrator_shelfino1(_rrt.get_graph(), _rrt.get_lookup());
   Orchestrator _orchestrator_shelfino2(_rrt.get_graph(), _rrt.get_lookup());
 
   // find the two shortest path
+  RCLCPP_INFO(m->get_logger(), "A* search for shelfino 1 started");
   auto path_astar1 = _orchestrator_shelfino1.astar_search(start_shelfino1, *(path.end() - 1));
+  RCLCPP_INFO(m->get_logger(), "A* search for shelfino 1 ended");
+  RCLCPP_INFO(m->get_logger(), "A* search for shelfino 2 started");
   auto path_astar2 = _orchestrator_shelfino2.astar_search(start_shelfino2, *(path.end() - 1));
+  RCLCPP_INFO(m->get_logger(), "A* search for shelfino 2 ended");
 
   // smooth it
+  RCLCPP_INFO(m->get_logger(), "Smoothing the paths");
+  RCLCPP_INFO(m->get_logger(), "Smoothing the paths");
   auto shelfino1_path = _rrt.smooth_path(path_astar1, map);
   auto shelfino2_path = _rrt.smooth_path(path_astar2, map);
 
@@ -411,21 +416,25 @@ int main(int argc, char **argv)
   {
     node->setPathPoints(shelfino1_path);
   }
-  // cout << "FINISHED" << endl;
   if (DISPLAY_PATH_2)
   {
     node->setPathPoints(shelfino2_path);
   }
+  RCLCPP_INFO(m->get_logger(), "\033[1;32m Path founded! \033[0m");
 
   //* Create dubinized version of the path
+  RCLCPP_INFO(m->get_logger(), "\033[1;32m Dubinising paths \033[0m");
   Dubins d;
+  // For creating the dubins path, we need to remove the start and the goal
   shelfino1_path.erase(shelfino1_path.begin());
   shelfino1_path.erase(shelfino1_path.end());
   shelfino2_path.erase(shelfino2_path.begin());
   shelfino2_path.erase(shelfino2_path.end());
 
   auto shelfino1_d_path = d.dubins_multi_point(start_shelfino1.at(0), start_shelfino1.at(1), m->get_pose1().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino1_path, kmax, map);
+  RCLCPP_INFO(m->get_logger(), "Dubins path for shelfino 1 created");
   auto shelfino2_d_path = d.dubins_multi_point(start_shelfino2.at(0), start_shelfino2.at(1), m->get_pose2().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino2_path, kmax, map);
+  RCLCPP_INFO(m->get_logger(), "Dubins path for shelfino 2 created");
   auto shelfino1_nav2 = convertDubinsPathToNavPath(shelfino1_d_path);
   auto shelfino2_nav2 = convertDubinsPathToNavPath(shelfino2_d_path);
 
@@ -435,6 +444,7 @@ int main(int argc, char **argv)
   shelfino2_path.insert(shelfino2_path.begin(), {start_shelfino2.at(0), start_shelfino2.at(1)});
 
   // Check collisions between the two paths
+  RCLCPP_INFO(m->get_logger(), "\033[1;32m Collision checking \033[0m");
   bool collision = true;
   bool first_reschedule = true;
   while (collision)
@@ -442,15 +452,12 @@ int main(int argc, char **argv)
     int collision_index = _orchestrator_shelfino1.checkIntersection(shelfino1_nav2, shelfino2_nav2);
     if (collision_index != -1)
     {
+      RCLCPP_INFO(m->get_logger(), "\033[1;33m Found a collision \033[0m");
       // get the collision point as a KDNode_t
-      std::cout << "Collision found, reschedule the path" << std::endl;
       KDNode_t collision_point = {shelfino1_nav2.poses.at(collision_index).pose.position.x, shelfino1_nav2.poses.at(collision_index).pose.position.y};
-      std::cout << collision_index << std::endl;
       double score1 = _orchestrator_shelfino1.compute_score(shelfino1_nav2, collision_index);
       double score2 = _orchestrator_shelfino2.compute_score(shelfino2_nav2, collision_index);
       // print scores
-      std::cout << "Score for shelfino1: " << score1 << std::endl;
-      std::cout << "Score for shelfino2: " << score2 << std::endl;
 
       // who has the largest score has to deviate the path
       if (score1 > score2)
@@ -478,16 +485,15 @@ int main(int argc, char **argv)
     }
     else
     {
+      RCLCPP_INFO(m->get_logger(), "\033[1;32m No collisions \033[0m");
       collision = false;
-      std::cout << "No collision, path could be safely executed" << std::endl;
     }
   }
-
+  RCLCPP_INFO(m->get_logger(), "\033[1;32m Sending paths to nav2 controller \033[0m");
   node->send_nav2(shelfino1_nav2, shelfino2_nav2);
 
   rclcpp::spin(node);
 
   rclcpp::shutdown();
-  cout << "Done!" << endl;
   return 0;
 }
