@@ -474,7 +474,6 @@ int main(int argc, char **argv)
         shelfino2_path.push_back({goal.at(0), goal.at(1)});
         shelfino2_path.insert(shelfino2_path.begin(), {start_shelfino2.at(0), start_shelfino2.at(1)});
       }
-      node->send_nav2(shelfino1_nav2, shelfino2_nav2);
       first_reschedule = false;
     }
     else
