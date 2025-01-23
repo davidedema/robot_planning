@@ -355,7 +355,7 @@ int main(int argc, char **argv)
     path_points.push_back({p.at(0), p.at(1)});
   }
 
-  Dubins d({0.0, 0.0}, {0.0, 0.0}, kmax);
+  Dubins d();
   // Set points in the node
   node->setSampledPoints(sampled_points);
   node->setPathPoints(path_points);
@@ -391,7 +391,7 @@ int main(int argc, char **argv)
     cout << p.at(0) << "  " << p.at(1) << endl;
   }
 
-  auto dubins_curves = d.dubins_multi_point(start.at(0), start.at(1), m->get_pose1().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), path_points2, kmax, _rrt, map);
+  auto dubins_curves = d.dubins_multi_point(start.at(0), start.at(1), m->get_pose1().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), path_points2, kmax, map);
   node->setDubinsCurves(dubins_curves);
 
   // Keep the node alive
