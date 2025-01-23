@@ -20,8 +20,8 @@
 #include <vector>
 
 #define DISPLAY_SAMPLES 0
-#define DISPLAY_PATH_1 1
-#define DISPLAY_PATH_2 1
+#define DISPLAY_PATH_1 0
+#define DISPLAY_PATH_2 0
 
 using namespace std;
 
@@ -333,7 +333,7 @@ int main(int argc, char **argv)
   auto m = std::make_shared<GraphGenerator>();
 
   RCLCPP_INFO(m->get_logger(), "Waiting for obstacles, borders and gates...");
-  while (!m->obstacles_r_ || !m->borders_r_ || !m->gates_r_ || !m->pos1_r_)
+  while (!m->obstacles_r_ || !m->borders_r_ || !m->gates_r_ || !m->pos1_r_ || !m->pos2_r_)
   {
     rclcpp::spin_some(m->get_node_base_interface());
     rclcpp::sleep_for(std::chrono::milliseconds(100));
@@ -377,6 +377,8 @@ int main(int argc, char **argv)
     }
   }
 
+  RCLCPP_INFO(m->get_logger(), "\033[1;32m Founded first path \033[0m");
+
   if (DISPLAY_SAMPLES)
   {
     node->setSampledPoints(sampled_points);
@@ -384,9 +386,12 @@ int main(int argc, char **argv)
 
   // Pose for shelfino 2
   KDNode_t start_shelfino2 = {m->get_pose2().at(0), m->get_pose2().at(1)};
+  
+  RCLCPP_INFO(m->get_logger(), "Retrived position for shelfino 2");
 
   // Add shelfino 2 start_shelfino1 node to the graph
   auto nearest2 = _rrt.get_nn(start_shelfino2, 1);
+  RCLCPP_INFO(m->get_logger(), "Get nn for shelfino 2");
   if (_rrt.attach_node(start_shelfino2, nearest2, map))
   {
     RCLCPP_INFO(m->get_logger(), "\033[1;32m Added start shelfino 2\033[0m");
@@ -490,6 +495,11 @@ int main(int argc, char **argv)
     }
   }
   RCLCPP_INFO(m->get_logger(), "\033[1;32m Sending paths to nav2 controller \033[0m");
+  if (shelfino1_nav2.poses.size() == 0 || shelfino2_nav2.poses.size() == 0)
+  {
+    throw std::runtime_error("Empty path");
+    return -1;
+  }
   node->send_nav2(shelfino1_nav2, shelfino2_nav2);
 
   rclcpp::spin(node);
