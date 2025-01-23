@@ -418,14 +418,14 @@ int main(int argc, char **argv)
   }
 
   //* Create dubinized version of the path
-  Dubins d({0.0, 0.0}, {0.0, 0.0}, kmax);
+  Dubins d;
   shelfino1_path.erase(shelfino1_path.begin());
   shelfino1_path.erase(shelfino1_path.end());
   shelfino2_path.erase(shelfino2_path.begin());
   shelfino2_path.erase(shelfino2_path.end());
 
-  auto shelfino1_d_path = d.dubins_multi_point(start_shelfino1.at(0), start_shelfino1.at(1), m->get_pose1().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino1_path, kmax, _rrt, map);
-  auto shelfino2_d_path = d.dubins_multi_point(start_shelfino2.at(0), start_shelfino2.at(1), m->get_pose2().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino2_path, kmax, _rrt, map);
+  auto shelfino1_d_path = d.dubins_multi_point(start_shelfino1.at(0), start_shelfino1.at(1), m->get_pose1().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino1_path, kmax, map);
+  auto shelfino2_d_path = d.dubins_multi_point(start_shelfino2.at(0), start_shelfino2.at(1), m->get_pose2().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino2_path, kmax, map);
   auto shelfino1_nav2 = convertDubinsPathToNavPath(shelfino1_d_path);
   auto shelfino2_nav2 = convertDubinsPathToNavPath(shelfino2_d_path);
 
@@ -458,7 +458,7 @@ int main(int argc, char **argv)
         shelfino1_path = _orchestrator_shelfino1.reschedule_path(shelfino1_path, collision_point, 0.5, first_reschedule);
         shelfino1_path.erase(shelfino1_path.begin());
         shelfino1_path.erase(shelfino1_path.end());
-        shelfino1_d_path = d.dubins_multi_point(start_shelfino1.at(0), start_shelfino1.at(1), m->get_pose1().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino1_path, kmax, _rrt, map);
+        shelfino1_d_path = d.dubins_multi_point(start_shelfino1.at(0), start_shelfino1.at(1), m->get_pose1().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino1_path, kmax, map);
         shelfino1_nav2 = convertDubinsPathToNavPath(shelfino1_d_path);
         shelfino1_path.push_back({goal.at(0), goal.at(1)});
         shelfino1_path.insert(shelfino1_path.begin(), {start_shelfino1.at(0), start_shelfino1.at(1)});
@@ -469,7 +469,7 @@ int main(int argc, char **argv)
         shelfino2_path = _orchestrator_shelfino2.reschedule_path(shelfino2_path, collision_point, 0.5, first_reschedule);
         shelfino2_path.erase(shelfino2_path.begin());
         shelfino2_path.erase(shelfino2_path.end());
-        shelfino2_d_path = d.dubins_multi_point(start_shelfino2.at(0), start_shelfino2.at(1), m->get_pose2().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino2_path, kmax, _rrt, map);
+        shelfino2_d_path = d.dubins_multi_point(start_shelfino2.at(0), start_shelfino2.at(1), m->get_pose2().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino2_path, kmax, map);
         shelfino2_nav2 = convertDubinsPathToNavPath(shelfino2_d_path);
         shelfino2_path.push_back({goal.at(0), goal.at(1)});
         shelfino2_path.insert(shelfino2_path.begin(), {start_shelfino2.at(0), start_shelfino2.at(1)});
