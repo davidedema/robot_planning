@@ -355,7 +355,7 @@ int main(int argc, char **argv)
     path_points.push_back({p.at(0), p.at(1)});
   }
 
-  Dubins d();
+  Dubins d;
   // Set points in the node
   node->setSampledPoints(sampled_points);
   node->setPathPoints(path_points);

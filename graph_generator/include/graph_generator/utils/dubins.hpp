@@ -4,6 +4,8 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <boost/geometry.hpp>
+#include <boost/geometry/geometries/polygon.hpp>
 
 struct dubins_arc
 {
@@ -24,6 +26,11 @@ struct dubins_curve
   struct dubins_arc a3;
   double L;
 };
+
+typedef boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> point_t;
+typedef boost::geometry::model::polygon<point_t> polygon_t;
+typedef boost::geometry::model::segment<point_t> segment_t;
+typedef std::vector<double> KDNode_t;
 
 class Dubins
 {
