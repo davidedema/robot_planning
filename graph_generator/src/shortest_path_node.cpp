@@ -340,116 +340,80 @@ nav_msgs::msg::Path convertDubinsPathToNavPath(const std::vector<dubins_curve> &
 
 int main(int argc, char **argv)
 {
-  std::stringstream ss;
-  std::string sService;
-
   rclcpp::init(argc, argv);
-
   auto m = std::make_shared<MapConstruction>();
-
-  RCLCPP_INFO(m->get_logger(), "Waiting for obstacles, borders and gates...");
-  ss.str(std::string());
-
-  while (!m->obstacles_r_ || !m->borders_r_ || !m->gates_r_ || !m->pos1_r_ )
+  auto logger = m->get_logger();
+  auto log_level = rclcpp::Logger::Level::Info;
+  log_message(logger, log_level, "Waiting for obstacles, borders and gates...");
+  while (!m->obstacles_r_ || !m->borders_r_ || !m->gates_r_ || !m->pos1_r_)
   {
     rclcpp::spin_some(m->get_node_base_interface());
     rclcpp::sleep_for(std::chrono::milliseconds(100));
   }
-  RCLCPP_INFO(m->get_logger(), "\033[1;32m Map info obtained\033[0m");
-  RCLCPP_INFO(m->get_logger(), "Building map");
 
+  log_message(logger, log_level, "\033[1;32m Map info obtained\033[0m \n Building map");
   auto inflated_obstacles = m->get_inflated_map();
   auto inflated_obstacles_unionized = m->get_unionized_inflated_map();
-
   auto inflated_border = m->get_inflated_border();
   auto clean_map = m->get_clean_map();
-
   auto pose_shellfino1 = m->get_pose1();
   auto pose_shellfino2 = m->get_pose3();
   auto pose_gate = m->get_gate();
-
+  
   point_t position_shellfino_1 = point_t({pose_shellfino1[0], pose_shellfino1[1]});
   point_t position_shellfino_2 = point_t({pose_shellfino2[0], pose_shellfino2[1]});
   point_t position_gate = point_t({pose_gate[0], pose_gate[1]});
 
-  ss
-      << "\033[1;32m Number of obstacles " << m->get_obstacles().size() << "\033[0m";
-  sService = ss.str();
-  RCLCPP_INFO(m->get_logger(), sService.c_str());
-  ss.str(std::string());
-  RCLCPP_INFO(m->get_logger(), "\033[1;32m Map built\033[0m");
+  log_message(logger, log_level, "\033[1;32m Number of obstacles", m->get_obstacles().size(), "\033[0m");
+  log_message(logger, log_level, "\033[1;32m Map built\033[0m");
+  log_message(logger, log_level, "clean map objects : ", clean_map.size(), " inflated objects : ", inflated_obstacles.size());
+  log_message(logger, log_level, "\033[1;32m Cutting edges \033[0m");
 
-  ss << "clean map objects: " << clean_map.size() << "inflated objects:" << inflated_obstacles.size() << "";
-  sService = ss.str();
-  RCLCPP_INFO(m->get_logger(), sService.c_str());
-  ss.str(std::string());
-  RCLCPP_INFO(m->get_logger(), "\033[1;32m Cutting edges \033[0m");
-
+  // Edge Calculations----------------------------------------------------------------
   auto cuts = get_cut_lines(clean_map, inflated_obstacles, SHELFINO_INFLATION);
-
-  RCLCPP_INFO(m->get_logger(), "\033[1;32m Generating Graph\033[0m");
+  log_message(logger, log_level, "\033[1;32m Generating Graph \033[0m");
 
   auto cutted_map_poly = cutted_map(inflated_obstacles_unionized, cuts);
-
-  // MAP CONVERSION
   auto map_in_lines = map_to_lines(cutted_map_poly, inflated_border);
-
   auto shellfino1_to_map = find_shellfino_map_links(inflated_obstacles_unionized, position_shellfino_1, position_gate);
   auto shellfino2_to_map = find_shellfino_map_links(inflated_obstacles_unionized, position_shellfino_2, position_gate);
   auto gate_to_map = find_point_map_links(inflated_obstacles_unionized, position_gate);
 
-  RCLCPP_INFO(m->get_logger(), "\033[1;32m Converted to lines\033[0m");
+  std::vector<line_t> bitangents_lines = find_links(cutted_map_poly);
 
-  std::vector<line_t>
-      bitangents_lines = find_links(cutted_map_poly);
+  log_message(logger, log_level, "\033[1;32m Number of edges", bitangents_lines.size(), "\033[0m");
 
-  ss << "\033[1;32m Graph size " << bitangents_lines.size() << "\033[0m";
-  sService = ss.str();
-  RCLCPP_INFO(m->get_logger(), sService.c_str());
-  ss.str(std::string());
-
+  // Graph Search------------------------------------------------------------------------------
   auto graph_generator = ShortestGraph(shellfino1_to_map, shellfino2_to_map, gate_to_map, map_in_lines, position_shellfino_1, position_shellfino_2, position_gate);
   auto points_path1 = graph_generator.get_shellfino_1_path();
-  RCLCPP_INFO(m->get_logger(), "\033[1;32m Dubinizing \033[0m");
 
+  log_message(logger, log_level, "\033[1;32m Dubinizing \033[0m");
+
+  // Conversion to Dubins---------------------------------------------------------------------------
   auto dubins_publisher = std::make_shared<PointMarkerNode>();
-  RCLCPP_INFO(m->get_logger(), "\033[1;32m Created publisher \033[0m");
+  auto converted_path1 = convert_points(points_path1);
+  std::reverse(converted_path1.begin(), converted_path1.end());
+  converted_path1.erase(converted_path1.begin()); // TODO FIX THE DOUBLE START
+  converted_path1.erase(converted_path1.begin()); // TODO FIX THE DOUBLE START
+  converted_path1.erase(converted_path1.end());
 
   Dubins d;
-
-  RCLCPP_INFO(m->get_logger(), "\033[1;32m Completing the map \033[0m");
-
-
-
   multi_polygon_t complete_map;
   complete_map.emplace_back(inflated_border);
   complete_map.insert(complete_map.end(), inflated_obstacles.begin(), inflated_obstacles.end());
-  RCLCPP_INFO(m->get_logger(), "\033[1;32m Completed the map \033[0m");
+  log_message(logger, log_level, "clean map objects: ", complete_map.size(), "points_path1 size:", points_path1.size());
 
-  ss << "clean map objects: " << complete_map.size() << "points_path1 size:" << points_path1.size() <<std::endl;
-  sService = ss.str();
-  RCLCPP_INFO(m->get_logger(), sService.c_str());
-  ss.str(std::string());
-
-  auto converted_path1 = convert_points(points_path1);
-  std::reverse(converted_path1.begin(), converted_path1.end());
-
-  converted_path1.erase(converted_path1.begin());//TODO FIX THE DOUBLE START
-  converted_path1.erase(converted_path1.begin()); // TODO FIX THE DOUBLE START
-
-  converted_path1.erase(converted_path1.end());
 
   RCLCPP_INFO(m->get_logger(), "\033[1;32m Converted points\033[0m");
-  for (auto converted_point : converted_path1){
-    std::cout << "x " << converted_point.at(0) << "y " << converted_point.at(1) << std::endl;
+  for (auto converted_point : converted_path1)
+  {
+    log_message(logger, log_level, "x ", converted_point.at(0), " y ", converted_point.at(1));
   }
 
   auto dubins_path_1 = d.dubins_multi_point(pose_shellfino1.at(0), pose_shellfino1.at(1), m->get_pose1().at(2), pose_gate.at(0), pose_gate.at(1), m->get_gate().at(2), converted_path1, 2, complete_map);
-  RCLCPP_INFO(m->get_logger(), "\033[1;32m Finished Dubinizing \033[0m");
-
   auto shelfino1_nav2 = convertDubinsPathToNavPath(dubins_path_1);
   dubins_publisher->send_nav2(shelfino1_nav2, shelfino1_nav2);
- 
+  //-----------------------------------------------------------------------
   std::vector<line_t>
       lines_path1;
   for (size_t i = 0; i < points_path1.size() - 1; i++)
@@ -459,26 +423,22 @@ int main(int argc, char **argv)
 
   auto inflated_unionized_publisher = std::make_shared<MapEdgePublisherNode>(inflated_obstacles_unionized, "inflated_unionized_map_edges");
   auto inflated_publisher = std::make_shared<MapEdgePublisherNode>(inflated_obstacles, "inflated_map_edges");
-
   auto clean_publisher = std::make_shared<MapEdgePublisherNode>(clean_map, "clean_map_edges");
   auto cutted_map_publisher = std::make_shared<MapEdgePublisherNode>(cutted_map_poly, "cutted_map_edges");
-
   auto graph_publisher = std::make_shared<SimpleEdgePublisherNode>(bitangents_lines, "bitangent_graph");
   auto map_in_lines_publisher = std::make_shared<SimpleEdgePublisherNode>(map_in_lines, "map_in_lines_graph");
   auto point_to_map_publisher = std::make_shared<SimpleEdgePublisherNode>(shellfino1_to_map, "point_to_map_edges");
   auto path_1_publisher = std::make_shared<SimpleEdgePublisherNode>(lines_path1, "path_graph");
-
   auto point_publisher = std::make_shared<SimpleEdgePublisherNode>(cuts, "cuts_publisher");
-  RCLCPP_INFO(m->get_logger(), "\033[1;32m Start publishing \033[0m");
+  log_message(logger, log_level, "\033[1;32m Start publishing \033[0m");
 
   while (true)
   {
-    //rclcpp::spin_some(dubins_publisher);
+    // rclcpp::spin_some(dubins_publisher);
 
     rclcpp::spin_some(clean_publisher);
     rclcpp::spin_some(inflated_unionized_publisher);
     rclcpp::spin_some(inflated_publisher);
-
     rclcpp::spin_some(graph_publisher);
     rclcpp::spin_some(point_publisher);
     rclcpp::spin_some(map_in_lines_publisher);
