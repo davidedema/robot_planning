@@ -65,11 +65,6 @@ public:
 
   // multipoint dubins
   std::vector<struct dubins_curve> dubins_multi_point(double x0, double y0, double th0, double xf, double yf, double thf, std::vector<std::vector<double>> points, double kmax, RRT &_rrt, boost::geometry::model::multi_polygon<polygon_t> &map);
-  bool valid_curve(struct dubins_curve curve, RRT &_rrt, boost::geometry::model::multi_polygon<polygon_t> &map);
+  bool valid_curve(struct dubins_curve curve, boost::geometry::model::multi_polygon<polygon_t> &map);
 
-
-private:
-  std::vector<double> start;
-  std::vector<double> end;
-  double Kmax;
 };
