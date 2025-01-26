@@ -52,7 +52,17 @@ public:
         std::chrono::milliseconds(timer_interval_ms_),
         std::bind(&PointMarkerNode::checkAndPublishMarkers, this));
 
+    // parameters
+    this->declare_parameter<int>("points_to_sample", 3000);
+
+    int points_to_sample = this->get_parameter("points_to_sample").as_int();
+
     RCLCPP_INFO(this->get_logger(), "Point Marker Node started");
+  }
+
+  int get_points_to_sample()
+  {
+    return points_to_sample;
   }
 
   void setSampledPoints(const std::vector<std::vector<double>> &sampled_points)
@@ -180,7 +190,7 @@ private:
   void publishDubinsCurveMarkers()
   {
     visualization_msgs::msg::Marker marker;
-    marker.header.frame_id = "map"; // Adjust frame_id as needed
+    marker.header.frame_id = "map";
     marker.header.stamp = this->now();
     marker.ns = "dubins_curve";
     marker.id = 3;
@@ -254,12 +264,13 @@ private:
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr shelfino2_nav2_path_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
   int timer_interval_ms_;
+  int points_to_sample;
 };
 
 nav_msgs::msg::Path convertDubinsPathToNavPath(const std::vector<dubins_curve> &dubins_curves)
 {
   nav_msgs::msg::Path path_msg;
-  path_msg.header.frame_id = "map"; // Adjust the frame_id to your TF setup
+  path_msg.header.frame_id = "map";
   path_msg.header.stamp = rclcpp::Clock().now();
 
   for (const auto &curve : dubins_curves)
@@ -358,9 +369,8 @@ int main(int argc, char **argv)
 
   // Main tree -> created from shelfino1
 
-  for (uint i = 1; i < 3000; i++)
+  for (uint i = 1; i < 8000; i++)
   {
-
     auto point = _rrt.get_random_point(i, map);
     auto nearest = _rrt.get_nn(point, 1);
     auto new_point = _rrt.next_point(point, nearest, map);
@@ -377,6 +387,12 @@ int main(int argc, char **argv)
     }
   }
 
+  if (path.empty())
+  {
+    RCLCPP_ERROR(m->get_logger(), "No path found, try sampling more points");
+    return -1;
+  }
+
   RCLCPP_INFO(m->get_logger(), "\033[1;32m Founded first path \033[0m");
 
   if (DISPLAY_SAMPLES)
@@ -386,7 +402,7 @@ int main(int argc, char **argv)
 
   // Pose for shelfino 2
   KDNode_t start_shelfino2 = {m->get_pose2().at(0), m->get_pose2().at(1)};
-  
+
   RCLCPP_INFO(m->get_logger(), "Retrived position for shelfino 2");
 
   // Add shelfino 2 start_shelfino1 node to the graph
@@ -408,14 +424,28 @@ int main(int argc, char **argv)
   RCLCPP_INFO(m->get_logger(), "A* search for shelfino 1 ended");
   RCLCPP_INFO(m->get_logger(), "A* search for shelfino 2 started");
   auto path_astar2 = _orchestrator_shelfino2.astar_search(start_shelfino2, *(path.end() - 1));
+  if (path_astar2.size() == 0)
+  {
+    throw std::runtime_error("Empty path2");
+    return -1;
+  }
   RCLCPP_INFO(m->get_logger(), "A* search for shelfino 2 ended");
 
   // smooth it
-  RCLCPP_INFO(m->get_logger(), "Smoothing the paths");
-  RCLCPP_INFO(m->get_logger(), "Smoothing the paths");
+  RCLCPP_INFO(m->get_logger(), "Smoothing path 1");
   auto shelfino1_path = _rrt.smooth_path(path_astar1, map);
+  // print path
+  for (auto p : shelfino1_path)
+  {
+    RCLCPP_INFO(m->get_logger(), "Path 1: %f %f", p.at(0), p.at(1));
+  }
+  RCLCPP_INFO(m->get_logger(), "Smoothing path 2");
   auto shelfino2_path = _rrt.smooth_path(path_astar2, map);
-
+  for (auto p : shelfino2_path)
+  {
+    RCLCPP_INFO(m->get_logger(), "Path 2: %f %f", p.at(0), p.at(1));
+  }
+  RCLCPP_INFO(m->get_logger(), "Paths smoothed");
   // Display path
   if (DISPLAY_PATH_1)
   {
@@ -443,6 +473,16 @@ int main(int argc, char **argv)
   auto shelfino1_nav2 = convertDubinsPathToNavPath(shelfino1_d_path);
   auto shelfino2_nav2 = convertDubinsPathToNavPath(shelfino2_d_path);
 
+  if (shelfino1_nav2.poses.size() == 0 || shelfino2_nav2.poses.size() == 0)
+  {
+    throw std::runtime_error("Empty path");
+    return -1;
+  }
+
+  // Send the paths to the nav2 controller
+  // node->send_nav2(shelfino1_nav2, shelfino2_nav2);
+  // rclcpp::spin(node);
+
   shelfino1_path.push_back({goal.at(0), goal.at(1)});
   shelfino1_path.insert(shelfino1_path.begin(), {start_shelfino1.at(0), start_shelfino1.at(1)});
   shelfino2_path.push_back({goal.at(0), goal.at(1)});
@@ -450,50 +490,44 @@ int main(int argc, char **argv)
 
   // Check collisions between the two paths
   RCLCPP_INFO(m->get_logger(), "\033[1;32m Collision checking \033[0m");
-  bool collision = true;
-  bool first_reschedule = true;
-  while (collision)
+  int collision_index = _orchestrator_shelfino1.checkIntersection(shelfino1_nav2, shelfino2_nav2);
+  if (collision_index != -1)
   {
-    int collision_index = _orchestrator_shelfino1.checkIntersection(shelfino1_nav2, shelfino2_nav2);
-    if (collision_index != -1)
-    {
-      RCLCPP_INFO(m->get_logger(), "\033[1;33m Found a collision \033[0m");
-      // get the collision point as a KDNode_t
-      KDNode_t collision_point = {shelfino1_nav2.poses.at(collision_index).pose.position.x, shelfino1_nav2.poses.at(collision_index).pose.position.y};
-      double score1 = _orchestrator_shelfino1.compute_score(shelfino1_nav2, collision_index);
-      double score2 = _orchestrator_shelfino2.compute_score(shelfino2_nav2, collision_index);
-      // print scores
+    RCLCPP_INFO(m->get_logger(), "\033[1;33m Found a collision \033[0m");
+    // get the collision point as a KDNode_t
+    KDNode_t collision_point = {shelfino1_nav2.poses.at(collision_index).pose.position.x, shelfino1_nav2.poses.at(collision_index).pose.position.y};
+    double score1 = _orchestrator_shelfino1.compute_score(shelfino1_nav2, collision_index);
+    double score2 = _orchestrator_shelfino2.compute_score(shelfino2_nav2, collision_index);
+    // print scores
 
-      // who has the largest score has to deviate the path
-      if (score1 > score2)
-      {
-        shelfino1_path = _orchestrator_shelfino1.reschedule_path(shelfino1_path, collision_point, 0.5, first_reschedule);
-        shelfino1_path.erase(shelfino1_path.begin());
-        shelfino1_path.erase(shelfino1_path.end());
-        shelfino1_d_path = d.dubins_multi_point(start_shelfino1.at(0), start_shelfino1.at(1), m->get_pose1().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino1_path, kmax, map);
-        shelfino1_nav2 = convertDubinsPathToNavPath(shelfino1_d_path);
-        shelfino1_path.push_back({goal.at(0), goal.at(1)});
-        shelfino1_path.insert(shelfino1_path.begin(), {start_shelfino1.at(0), start_shelfino1.at(1)});
-      }
-      else
-      {
-        // reschedule for shelfino 2
-        shelfino2_path = _orchestrator_shelfino2.reschedule_path(shelfino2_path, collision_point, 0.5, first_reschedule);
-        shelfino2_path.erase(shelfino2_path.begin());
-        shelfino2_path.erase(shelfino2_path.end());
-        shelfino2_d_path = d.dubins_multi_point(start_shelfino2.at(0), start_shelfino2.at(1), m->get_pose2().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino2_path, kmax, map);
-        shelfino2_nav2 = convertDubinsPathToNavPath(shelfino2_d_path);
-        shelfino2_path.push_back({goal.at(0), goal.at(1)});
-        shelfino2_path.insert(shelfino2_path.begin(), {start_shelfino2.at(0), start_shelfino2.at(1)});
-      }
-      first_reschedule = false;
+    // who has the largest score has to deviate the path
+    if (score1 > score2)
+    {
+      shelfino1_path = _orchestrator_shelfino1.reschedule_path(shelfino1_path, collision_point, 0.5);
+      shelfino1_path.erase(shelfino1_path.begin());
+      shelfino1_path.erase(shelfino1_path.end());
+      shelfino1_d_path = d.dubins_multi_point(start_shelfino1.at(0), start_shelfino1.at(1), m->get_pose1().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino1_path, kmax, map);
+      shelfino1_nav2 = convertDubinsPathToNavPath(shelfino1_d_path);
+      shelfino1_path.push_back({goal.at(0), goal.at(1)});
+      shelfino1_path.insert(shelfino1_path.begin(), {start_shelfino1.at(0), start_shelfino1.at(1)});
     }
     else
     {
-      RCLCPP_INFO(m->get_logger(), "\033[1;32m No collisions \033[0m");
-      collision = false;
+      // reschedule for shelfino 2
+      shelfino2_path = _orchestrator_shelfino2.reschedule_path(shelfino2_path, collision_point, 0.5);
+      shelfino2_path.erase(shelfino2_path.begin());
+      shelfino2_path.erase(shelfino2_path.end());
+      shelfino2_d_path = d.dubins_multi_point(start_shelfino2.at(0), start_shelfino2.at(1), m->get_pose2().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino2_path, kmax, map);
+      shelfino2_nav2 = convertDubinsPathToNavPath(shelfino2_d_path);
+      shelfino2_path.push_back({goal.at(0), goal.at(1)});
+      shelfino2_path.insert(shelfino2_path.begin(), {start_shelfino2.at(0), start_shelfino2.at(1)});
     }
   }
+  else
+  {
+    RCLCPP_INFO(m->get_logger(), "\033[1;32m No collisions \033[0m");
+  }
+
   RCLCPP_INFO(m->get_logger(), "\033[1;32m Sending paths to nav2 controller \033[0m");
   if (shelfino1_nav2.poses.size() == 0 || shelfino2_nav2.poses.size() == 0)
   {

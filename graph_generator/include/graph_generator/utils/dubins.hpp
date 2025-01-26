@@ -68,4 +68,6 @@ public:
   bool valid_curve(struct dubins_curve curve, boost::geometry::model::multi_polygon<polygon_t> &map);
   bool valid_segment(KDNode_t &start, KDNode_t &end, boost::geometry::model::multi_polygon<polygon_t> &map);
   void create_inflated_polygon(const point_t &p1, const point_t &p2, double epsilon, polygon_t &polygon);
+
+  std::vector<KDNode_t> segment_arc(const dubins_arc& arc, int segments);
 };
