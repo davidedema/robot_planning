@@ -20,6 +20,10 @@ find_package(tf2 REQUIRED)
 find_package(nav2_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 
+
+# Alternatively, set global include directories
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+
 include_directories(
   clipper
 )
@@ -38,9 +42,23 @@ add_executable(test_shortest_path
   src/combinatorial_based/utilities.cpp
   src/combinatorial_based/shortest_graph.cpp
 
-
-  ${CLIPPER_SRC}
   src/utils/dubins.cpp
+  ${CLIPPER_SRC}
+)
+
+  ament_target_dependencies(test_shortest_path
+  rclcpp
+  geometry_msgs
+  visualization_msgs
+  obstacles_msgs
+  tf2
+  tf2_ros
+  nav2_msgs
+)
+
+install(TARGETS
+  test_shortest_path
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 # ament_target_dependencies(graph_generator rclcpp geometry_msgs obstacles_msgs)
@@ -73,15 +91,7 @@ ament_target_dependencies(entrypoint
   nav2_msgs
   )
 
-  ament_target_dependencies(test_shortest_path
-  rclcpp
-  geometry_msgs
-  visualization_msgs
-  obstacles_msgs
-  tf2
-  tf2_ros
 
-)
   
   target_link_libraries(entrypoint Boost::headers)
   target_include_directories(entrypoint PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -111,11 +121,7 @@ ament_target_dependencies(entrypoint
   obstacles_msgs
 )
 
-install(TARGETS
-#  nav2_client
-  test_shortest_path
-  DESTINATION lib/${PROJECT_NAME}
-)
+
 
 install(TARGETS
   nav2_client

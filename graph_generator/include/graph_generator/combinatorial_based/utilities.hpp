@@ -19,6 +19,8 @@
 #include "geometry_msgs/msg/pose_array.hpp"
 #include "geometry_msgs/msg/pose.hpp"
 #include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
+#include "graph_generator/utils/dubins.hpp"
+#include <nav_msgs/msg/path.hpp>
 
 #define SHELFINO_INFLATION 0.5
 #define CIRCLE_APPROXIMATION 36
@@ -50,3 +52,5 @@ static const rmw_qos_profile_t qos_profile_custom = {
 polygon_xy_t convertPolygon(const polygon_t &polygon);
 multipolygon_xy_t convertMultiPolygon(const multi_polygon_t &multipolygon);
  */
+
+std::vector<std::vector<double>> convert_points(std::vector<point_t> points);

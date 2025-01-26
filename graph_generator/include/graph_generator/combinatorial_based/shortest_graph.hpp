@@ -12,9 +12,9 @@
 
 typedef boost::adjacency_list<boost::listS, boost::vecS, boost::undirectedS,
                               boost::no_property, boost::property<boost::edge_weight_t, float>>
-    Graph;
+    Graph_s;
 
-typedef boost::graph_traits<Graph>::vertex_descriptor Vertex;
+typedef boost::graph_traits<Graph_s>::vertex_descriptor Vertex;
 
 // Exception to signal that the goal has been found
 struct goal_found : public std::exception
@@ -33,7 +33,7 @@ struct PointComparator
 };
 
 // Straight-line distance heuristic
-class straight_line_heuristic : public boost::astar_heuristic<Graph, float>
+class straight_line_heuristic : public boost::astar_heuristic<Graph_s, float>
 {
 public:
     straight_line_heuristic(const std::map<Vertex, point_t> &vertex_points, Vertex goal)
@@ -80,7 +80,7 @@ private:
     point_t start_shellfino1;
     point_t start_shellfino2;
     point_t goal_point;
-    Graph
+    Graph_s
     convert_to_graph(const std::vector<line_t> &multi_linestring, std::map<Vertex, point_t> &vertex_points);
     Vertex find_vertex_by_point(const point_t &target_point, const std::map<Vertex, point_t> &vertex_points);
     std::vector<point_t> calculate_path(std::vector<line_t> lines_to_transform);

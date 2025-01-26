@@ -1,8 +1,6 @@
 
 #include "graph_generator/combinatorial_based/shortest_graph.hpp"
 
-
-
 ShortestGraph::ShortestGraph(std::vector<line_t> lines_shellfino_1, std::vector<line_t> lines_shellfino_2, std::vector<line_t> lines_gate, std::vector<line_t> lines_map, point_t start_shellfino1, point_t start_shellfino2, point_t goal)
 {
     this->lines_shellfino_1 = lines_shellfino_1;
@@ -14,9 +12,9 @@ ShortestGraph::ShortestGraph(std::vector<line_t> lines_shellfino_1, std::vector<
     this->goal_point = goal;
 }
 
-Graph ShortestGraph::convert_to_graph(const std::vector<line_t> &multi_linestring, std::map<Vertex, point_t> &vertex_points)
+Graph_s ShortestGraph::convert_to_graph(const std::vector<line_t> &multi_linestring, std::map<Vertex, point_t> &vertex_points)
 {
-    Graph graph;
+    Graph_s graph;
 
     // Map to store points and their corresponding vertex indices
     std::map<point_t, size_t, PointComparator> point_to_vertex;
@@ -60,11 +58,12 @@ Vertex ShortestGraph::find_vertex_by_point(const point_t &target_point, const st
     }
     throw std::runtime_error("Point not found in vertex_points map");
 }
-std::vector<point_t> ShortestGraph::calculate_path(std::vector<line_t> lines_to_transform){
+std::vector<point_t> ShortestGraph::calculate_path(std::vector<line_t> lines_to_transform)
+{
     // Convert to graph
     std::map<Vertex, point_t>
         vertex_points;
-    Graph graph = convert_to_graph(lines_to_transform, vertex_points);
+    Graph_s graph = convert_to_graph(lines_to_transform, vertex_points);
 
     // Define start and goal points (corresponding to vertices)
 
@@ -104,10 +103,10 @@ std::vector<point_t> ShortestGraph::calculate_path(std::vector<line_t> lines_to_
             << start << "\n";
     }
 
-    std::cout << "No path found from start to goal.\n";
+    return result;
 }
 
-    std::vector<point_t> ShortestGraph::get_shellfino_1_path()
+std::vector<point_t> ShortestGraph::get_shellfino_1_path()
 {
     std::vector<line_t> lines_to_transform;
     lines_to_transform.insert(lines_to_transform.end(), this->lines_map.begin(), this->lines_map.end());

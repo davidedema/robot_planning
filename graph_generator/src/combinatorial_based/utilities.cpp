@@ -73,3 +73,14 @@ multipolygon_xy_t convertMultiPolygon(const multi_polygon_t &multipolygon)
     return multipolygon_xy;
 }
  */
+
+std::vector<std::vector<double>> convert_points(std::vector<point_t> points){
+    std::vector<std::vector<double>> new_points;
+    for (auto point :points){
+        std::vector<double> new_point;
+        new_point.push_back(bg::get<0>(point));
+        new_point.push_back(bg::get<1>(point));
+        new_points.push_back(new_point);
+    }
+    return new_points;
+}
