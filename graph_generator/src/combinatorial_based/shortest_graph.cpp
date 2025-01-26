@@ -113,8 +113,52 @@ std::vector<point_t> ShortestGraph::get_shellfino_1_path()
     lines_to_transform.insert(lines_to_transform.end(), this->lines_gate.begin(), this->lines_gate.end());
     lines_to_transform.insert(lines_to_transform.end(), this->lines_shellfino_1.begin(), this->lines_shellfino_1.end());
     // Map to store vertex -> Point mappings
+    // Convert to graph
+    std::map<Vertex, point_t>
+        vertex_points;
+    Graph_s graph = convert_to_graph(lines_to_transform, vertex_points);
 
-    return calculate_path(lines_to_transform);
+    // Define start and goal points (corresponding to vertices)
+
+    // A* search
+    std::vector<Vertex> predecessors(boost::num_vertices(graph)); // Store shortest path tree
+    std::vector<float> distances(boost::num_vertices(graph));     // Store distances
+    Vertex start = find_vertex_by_point(this->start_shellfino1, vertex_points);
+    Vertex goal = find_vertex_by_point(this->goal_point, vertex_points);
+    std::vector<point_t> result;
+
+    try
+    {
+        boost::astar_search(
+            graph, start,
+            straight_line_heuristic(vertex_points, goal),
+            boost::predecessor_map(&predecessors[0])
+                .distance_map(&distances[0])
+                .visitor(astar_goal_visitor(goal)));
+    }
+    catch (goal_found &)
+    {
+
+        // Goal found, reconstruct the path
+        std::cout << "Path found from start to goal:\n";
+        result.emplace_back(vertex_points[goal]);
+
+        for (Vertex v = goal; v != start; v = predecessors[v])
+        {
+            result.emplace_back(vertex_points[predecessors[v]]);
+            std::cout
+                << v << " <- ";
+        }
+
+        result.emplace_back(vertex_points[predecessors[start]]);
+
+        std::cout
+            << start << "\n";
+    }
+
+    return result;
+
+    //return calculate_path(lines_to_transform);
 }
 
 std::vector<point_t> ShortestGraph::get_shellfino_2_path()
@@ -124,6 +168,52 @@ std::vector<point_t> ShortestGraph::get_shellfino_2_path()
     lines_to_transform.insert(lines_to_transform.end(), this->lines_gate.begin(), this->lines_gate.end());
     lines_to_transform.insert(lines_to_transform.end(), this->lines_shellfino_2.begin(), this->lines_shellfino_2.end());
     // Map to store vertex -> Point mappings
+    // Convert to graph
+    std::map<Vertex, point_t>
+        vertex_points;
+    Graph_s graph = convert_to_graph(lines_to_transform, vertex_points);
 
-    return calculate_path(lines_to_transform);
+    // Define start and goal points (corresponding to vertices)
+
+    // A* search
+    std::vector<Vertex> predecessors(boost::num_vertices(graph)); // Store shortest path tree
+    std::vector<float> distances(boost::num_vertices(graph));     // Store distances
+    Vertex start = find_vertex_by_point(this->start_shellfino2, vertex_points);
+    Vertex goal = find_vertex_by_point(this->goal_point, vertex_points);
+    std::vector<point_t> result;
+
+    try
+    {
+        boost::astar_search(
+            graph, start,
+            straight_line_heuristic(vertex_points, goal),
+            boost::predecessor_map(&predecessors[0])
+                .distance_map(&distances[0])
+                .visitor(astar_goal_visitor(goal)));
+    }
+    catch (goal_found &)
+    {
+
+        // Goal found, reconstruct the path
+        std::cout << "Path found from start to goal:\n";
+        result.emplace_back(vertex_points[goal]);
+
+        for (Vertex v = goal; v != start; v = predecessors[v])
+        {
+            result.emplace_back(vertex_points[predecessors[v]]);
+            std::cout
+                << v << " <- ";
+        }
+
+        result.emplace_back(vertex_points[predecessors[start]]);
+
+        std::cout
+            << start << "\n";
+    }
+
+    return result;
+
+    // Map to store vertex -> Point mappings
+
+    //return calculate_path(lines_to_transform);
 }

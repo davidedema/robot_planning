@@ -6,6 +6,8 @@
 
 #include "graph_generator/utils/orchestrator.hpp"
 
+#include "graph_generator/graph_node.hpp"
+
 class PointMarkerNode : public rclcpp::Node
 {
 public:
@@ -338,9 +340,112 @@ nav_msgs::msg::Path convertDubinsPathToNavPath(const std::vector<dubins_curve> &
   return path_msg;
 }
 
+size_t checkIntersection(const nav_msgs::msg::Path &path1, const nav_msgs::msg::Path &path2)
+{
+  // Get the sizes of the paths
+  size_t path1_size = path1.poses.size();
+  size_t path2_size = path2.poses.size();
+
+  // Get the smaller path size to prevent out-of-bounds access
+  size_t min_size = std::min(path1_size, path2_size);
+
+  // Loop through points in the two paths
+  for (size_t i = 0; i < min_size; i++)
+  {
+    const auto &p1 = path1.poses.at(i).pose.position;
+    const auto &p2 = path2.poses.at(i).pose.position;
+
+    // Check if the distance between points is less than twice the robot radius
+    double distance = std::sqrt(std::pow(p1.x - p2.x, 2) + std::pow(p1.y - p2.y, 2));
+    if (distance < 2 * 0.4)
+    {
+      return i; // Collision detected at this time step
+    }
+  }
+
+  // Return a special value to indicate no collision
+  return -1; // No collision detected
+}
+
+double compute_score(const nav_msgs::msg::Path &path, size_t collision_point)
+{
+  if (collision_point >= path.poses.size())
+  {
+    throw std::out_of_range("Collision point is out of bounds.");
+  }
+
+  // Compute the distance along the path from the collision point to the goal
+  double total_distance = 0.0;
+  for (size_t i = collision_point; i < path.poses.size() - 1; ++i)
+  {
+    const auto &current_pose = path.poses[i].pose.position;
+    const auto &next_pose = path.poses[i + 1].pose.position;
+
+    double dx = next_pose.x - current_pose.x;
+    double dy = next_pose.y - current_pose.y;
+    total_distance += std::sqrt(dx * dx + dy * dy);
+  }
+
+  // Compute the score; higher score for shorter distances
+  // Avoid division by zero if total_distance is very small
+  return (total_distance > 1e-6) ? (1.0 / total_distance) : std::numeric_limits<double>::infinity();
+}
+
+std::vector<KDNode_t> reschedule_path(std::vector<KDNode_t> path, KDNode_t collision_point, double step_size)
+{
+  std::vector<KDNode_t> new_path = path;
+  // if the path is point to point
+  if (path.size() == 2)
+  {
+    // take the mid point between collision and start
+    KDNode_t mid_point = {(path.at(0).at(0) + collision_point.at(0)) / 2, (path.at(0).at(1) + collision_point.at(1)) / 2};
+    // find the direction orthogonal to the goal
+    KDNode_t direction = {path.at(0).at(1) - collision_point.at(1), collision_point.at(0) - path.at(0).at(0)};
+    // normalize the direction
+    double norm = sqrt(pow(direction.at(0), 2) + pow(direction.at(1), 2));
+    direction.at(0) /= norm;
+    direction.at(1) /= norm;
+    // shift wrt the direction the mid point of a step size
+    // KDNode_t new_point = {mid_point.at(0) - step_size * direction.at(0), mid_point.at(1) - step_size * direction.at(1)};
+    KDNode_t new_point = {path.at(0).at(0) - step_size * direction.at(0), path.at(0).at(1) - step_size * direction.at(1)};
+    new_path.insert(new_path.begin() + 1, collision_point);
+    new_path.insert(new_path.begin() + 1, new_point);
+  }
+  // if the path has more point
+  else
+  {
+    // take mid point from start and first point in path
+    KDNode_t mid_point = {(path.at(0).at(0) + path.at(1).at(0)) / 2, (path.at(0).at(1) + path.at(1).at(1)) / 2};
+    // find the direction orthogonal to the goal
+    KDNode_t direction = {path.at(0).at(1) - path.at(1).at(1), path.at(1).at(0) - path.at(0).at(0)};
+    // normalize the direction
+    double norm = sqrt(pow(direction.at(0), 2) + pow(direction.at(1), 2));
+    direction.at(0) /= norm;
+    direction.at(1) /= norm;
+    // shift wrt the direction the mid point of a step size
+    // KDNode_t new_point = {mid_point.at(0) + step_size * direction.at(0), mid_point.at(1) + step_size * direction.at(1)};
+    KDNode_t new_point = {path.at(0).at(0) + step_size * direction.at(0), path.at(0).at(1) + step_size * direction.at(1)};
+    // insert the new point as a first point
+    new_path.insert(new_path.begin() + 1, collision_point);
+    new_path.insert(new_path.begin() + 1, new_point);
+  }
+
+  return new_path;
+}
+
 int main(int argc, char **argv)
 {
   rclcpp::init(argc, argv);
+
+  auto mappa = std::make_shared<GraphGenerator>();
+  RCLCPP_INFO(mappa->get_logger(), "Waiting for obstacles, borders and gates...");
+  while (!mappa->obstacles_r_ || !mappa->borders_r_ || !mappa->gates_r_ || !mappa->pos1_r_ || !mappa->pos2_r_)
+  {
+    rclcpp::spin_some(mappa->get_node_base_interface());
+    rclcpp::sleep_for(std::chrono::milliseconds(100));
+  }
+  auto map = mappa->get_map();
+
   auto m = std::make_shared<MapConstruction>();
   auto logger = m->get_logger();
   auto log_level = rclcpp::Logger::Level::Info;
@@ -357,9 +462,9 @@ int main(int argc, char **argv)
   auto inflated_border = m->get_inflated_border();
   auto clean_map = m->get_clean_map();
   auto pose_shellfino1 = m->get_pose1();
-  auto pose_shellfino2 = m->get_pose3();
+  auto pose_shellfino2 = m->get_pose2();
   auto pose_gate = m->get_gate();
-  
+
   point_t position_shellfino_1 = point_t({pose_shellfino1[0], pose_shellfino1[1]});
   point_t position_shellfino_2 = point_t({pose_shellfino2[0], pose_shellfino2[1]});
   point_t position_gate = point_t({pose_gate[0], pose_gate[1]});
@@ -386,33 +491,83 @@ int main(int argc, char **argv)
   // Graph Search------------------------------------------------------------------------------
   auto graph_generator = ShortestGraph(shellfino1_to_map, shellfino2_to_map, gate_to_map, map_in_lines, position_shellfino_1, position_shellfino_2, position_gate);
   auto points_path1 = graph_generator.get_shellfino_1_path();
+  auto points_path2 = graph_generator.get_shellfino_2_path();
 
   log_message(logger, log_level, "\033[1;32m Dubinizing \033[0m");
 
   // Conversion to Dubins---------------------------------------------------------------------------
   auto dubins_publisher = std::make_shared<PointMarkerNode>();
   auto converted_path1 = convert_points(points_path1);
+  auto converted_path2 = convert_points(points_path2);
+
   std::reverse(converted_path1.begin(), converted_path1.end());
   converted_path1.erase(converted_path1.begin()); // TODO FIX THE DOUBLE START
   converted_path1.erase(converted_path1.begin()); // TODO FIX THE DOUBLE START
   converted_path1.erase(converted_path1.end());
 
+  std::reverse(converted_path2.begin(), converted_path2.end());
+  converted_path2.erase(converted_path2.begin()); // TODO FIX THE DOUBLE START
+  converted_path2.erase(converted_path2.begin()); // TODO FIX THE DOUBLE STARTù
+  converted_path2.erase(converted_path2.end());
+
   Dubins d;
-  multi_polygon_t complete_map;
-  complete_map.emplace_back(inflated_border);
-  complete_map.insert(complete_map.end(), inflated_obstacles.begin(), inflated_obstacles.end());
-  log_message(logger, log_level, "clean map objects: ", complete_map.size(), "points_path1 size:", points_path1.size());
-
-
   RCLCPP_INFO(m->get_logger(), "\033[1;32m Converted points\033[0m");
   for (auto converted_point : converted_path1)
   {
     log_message(logger, log_level, "x ", converted_point.at(0), " y ", converted_point.at(1));
   }
 
-  auto dubins_path_1 = d.dubins_multi_point(pose_shellfino1.at(0), pose_shellfino1.at(1), m->get_pose1().at(2), pose_gate.at(0), pose_gate.at(1), m->get_gate().at(2), converted_path1, 2, complete_map);
+  auto dubins_path_1 = d.dubins_multi_point(pose_shellfino1.at(0), pose_shellfino1.at(1), m->get_pose1().at(2), pose_gate.at(0), pose_gate.at(1), m->get_gate().at(2), converted_path1, 2, map);
+  auto dubins_path_2 = d.dubins_multi_point(pose_shellfino2.at(0), pose_shellfino2.at(1), m->get_pose2().at(2), pose_gate.at(0), pose_gate.at(1), m->get_gate().at(2), converted_path2, 2, map);
+
   auto shelfino1_nav2 = convertDubinsPathToNavPath(dubins_path_1);
-  dubins_publisher->send_nav2(shelfino1_nav2, shelfino1_nav2);
+  auto shelfino2_nav2 = convertDubinsPathToNavPath(dubins_path_2);
+
+  // Collision checking-----------------------------------------------------------------------
+  converted_path1.push_back({pose_gate.at(0), pose_gate.at(1)});
+  converted_path1.insert(converted_path1.begin(), {pose_shellfino1.at(0), pose_shellfino1.at(1)});
+  converted_path2.push_back({pose_gate.at(0), pose_gate.at(1)});
+  converted_path2.insert(converted_path2.begin(), {pose_shellfino2.at(0), pose_shellfino2.at(1)});
+
+  int collision_index = checkIntersection(shelfino1_nav2, shelfino2_nav2);
+  if (collision_index != -1)
+  {
+    RCLCPP_INFO(m->get_logger(), "\033[1;33m Found a collision \033[0m");
+    // get the collision point as a KDNode_t
+    KDNode_t collision_point = {shelfino1_nav2.poses.at(collision_index).pose.position.x, shelfino1_nav2.poses.at(collision_index).pose.position.y};
+    double score1 = compute_score(shelfino1_nav2, collision_index);
+    double score2 = compute_score(shelfino2_nav2, collision_index);
+    // print scores
+
+    // who has the largest score has to deviate the path
+    if (score1 > score2)
+    {
+      converted_path1 = reschedule_path(converted_path1, collision_point, 0.5);
+      converted_path1.erase(converted_path1.begin());
+      converted_path1.erase(converted_path1.end());
+      dubins_path_1 = d.dubins_multi_point(pose_shellfino1.at(0), pose_shellfino1.at(1), m->get_pose1().at(2), pose_gate.at(0), pose_gate.at(1), m->get_gate().at(2), converted_path1, 2.0, map);
+      shelfino1_nav2 = convertDubinsPathToNavPath(dubins_path_1);
+      converted_path1.push_back({pose_gate.at(0), pose_gate.at(1)});
+      converted_path1.insert(converted_path1.begin(), {pose_shellfino1.at(0), pose_shellfino1.at(1)});
+    }
+    else
+    {
+      // reschedule for shelfino 2
+      converted_path2 = reschedule_path(converted_path2, collision_point, 0.5);
+      converted_path2.erase(converted_path2.begin());
+      converted_path2.erase(converted_path2.end());
+      dubins_path_2 = d.dubins_multi_point(pose_shellfino2.at(0), pose_shellfino2.at(1), m->get_pose2().at(2), pose_gate.at(0), pose_gate.at(1), m->get_gate().at(2), converted_path2, 2.0, map);
+      shelfino2_nav2 = convertDubinsPathToNavPath(dubins_path_2);
+      converted_path2.push_back({pose_gate.at(0), pose_gate.at(1)});
+      converted_path2.insert(converted_path2.begin(), {pose_shellfino2.at(0), pose_shellfino2.at(1)});
+    }
+  }
+  else
+  {
+    RCLCPP_INFO(m->get_logger(), "\033[1;32m No collisions \033[0m");
+  }
+
+  dubins_publisher->send_nav2(shelfino1_nav2, shelfino2_nav2);
   //-----------------------------------------------------------------------
   std::vector<line_t>
       lines_path1;

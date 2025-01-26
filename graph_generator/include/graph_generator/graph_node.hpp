@@ -25,7 +25,7 @@ typedef boost::geometry::model::polygon<point_xy_t> polygon_xy_t;
 
 typedef std::vector<double> pose_t;
 
-static const rmw_qos_profile_t qos_profile_custom = {
+static const rmw_qos_profile_t qos_profile_custom1 = {
     RMW_QOS_POLICY_HISTORY_KEEP_LAST,
     10,
     RMW_QOS_POLICY_RELIABILITY_RELIABLE,

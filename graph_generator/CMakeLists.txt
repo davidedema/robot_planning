@@ -42,6 +42,8 @@ add_executable(test_shortest_path
   src/combinatorial_based/utilities.cpp
   src/combinatorial_based/shortest_graph.cpp
 
+
+  src/graph_node.cpp
   src/utils/dubins.cpp
   ${CLIPPER_SRC}
 )

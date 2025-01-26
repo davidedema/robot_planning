@@ -12,7 +12,7 @@ GraphGenerator::GraphGenerator() : Node("GraphGenerator")
   pos2_r_ = false;
   pos3_r_ = false;
 
-  const auto qos = rclcpp::QoS(rclcpp::KeepLast(1), qos_profile_custom);
+  const auto qos = rclcpp::QoS(rclcpp::KeepLast(1), qos_profile_custom1);
 
   subscription_borders_ = this->create_subscription<geometry_msgs::msg::Polygon>(
       "/map_borders", qos, std::bind(&GraphGenerator::callback_borders, this, std::placeholders::_1));
