@@ -24,6 +24,7 @@ GraphGenerator::GraphGenerator() : Node("GraphGenerator")
   gates_r_ = false;
   pos1_r_ = false;
   pos2_r_ = false;
+  pos3_r_ = false;
 
   // Create QoS policy
   const auto qos = rclcpp::QoS(rclcpp::KeepLast(1), qos_profile_custom);
@@ -126,6 +127,20 @@ void GraphGenerator::callback_pos2(const geometry_msgs::msg::PoseWithCovarianceS
   this->set_pos2(*msg);
 }
 
+void GraphGenerator::callback_pos3(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg)
+{
+  subscription_position3_.reset();
+  pos3_r_ = true;
+  this->set_pos3(*msg);
+}
+
+void GraphGenerator::callback_pos3(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg)
+{
+  subscription_position3_.reset();
+  pos3_r_ = true;
+  this->set_pos3(*msg);
+}
+
 /**
  * @brief Get the position of the first robot.
  * @return A pose_t containing the position of the first robot.
@@ -142,6 +157,16 @@ pose_t GraphGenerator::get_pose1()
 pose_t GraphGenerator::get_pose2()
 {
   return pos2;
+}
+
+pose_t GraphGenerator::get_pose3()
+{
+  return pos3;
+}
+
+pose_t GraphGenerator::get_pose3()
+{
+  return pos3;
 }
 
 /**
@@ -309,6 +334,28 @@ void GraphGenerator::set_pos2(const geometry_msgs::msg::PoseWithCovarianceStampe
   tf2::Matrix3x3 m(q);
   m.getRPY(r, p, y);
   pos2.push_back(y);
+}
+
+void GraphGenerator::set_pos3(const geometry_msgs::msg::PoseWithCovarianceStamped &msg)
+{
+  pos3.push_back(msg.pose.pose.position.x);
+  pos3.push_back(msg.pose.pose.position.y);
+  tf2::Quaternion q(msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w);
+  double r, p, y;
+  tf2::Matrix3x3 m(q);
+  m.getRPY(r, p, y);
+  pos3.push_back(y);
+}
+
+void GraphGenerator::set_pos3(const geometry_msgs::msg::PoseWithCovarianceStamped &msg)
+{
+  pos3.push_back(msg.pose.pose.position.x);
+  pos3.push_back(msg.pose.pose.position.y);
+  tf2::Quaternion q(msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w);
+  double r, p, y;
+  tf2::Matrix3x3 m(q);
+  m.getRPY(r, p, y);
+  pos3.push_back(y);
 }
 
 /**

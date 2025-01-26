@@ -203,9 +203,10 @@ struct dubins_curve Dubins::dubins_shortest_path(double x0, double y0, double th
   std::vector<double> scaled_quantities = this->scale_to_standard(x0, y0, th0, xf, yf, thf, kmax);
   int pidx = -1;
   std::vector<double> best_dubins;
+  bool is_valid = true;
   double L = 999;
   double Lcur = 999;
-  std::vector<int> ksign = {1, 0, 1, -1, 0, -1, 1, 0, -1, -1, 0, 1, - 1, 1, -1, 1, -1, 1};
+  std::vector<int> ksign = {1, 0, 1, -1, 0, -1, 1, 0, -1, -1, 0, 1, -1, 1, -1, 1, -1, 1};
 
   struct dubins_curve result;
 
@@ -223,6 +224,7 @@ struct dubins_curve Dubins::dubins_shortest_path(double x0, double y0, double th
 
       if (Lcur < L && this->valid_curve(tmp_curve, map))
       {
+        is_valid = true;
         best_dubins = result_d;
         L = Lcur;
         pidx = i;
@@ -237,6 +239,11 @@ struct dubins_curve Dubins::dubins_shortest_path(double x0, double y0, double th
     result = this->build_dubins(x0, y0, th0, s.at(0), s.at(1), s.at(2), ksign.at(3 * pidx) * kmax, ksign.at(3 * pidx + 1) * kmax, ksign.at(3 * pidx + 2) * kmax);
   }
 
+  if (!is_valid)
+  {
+    throw std::runtime_error("No valid Dubins curve found.");
+  }
+
   return result;
 }
 
@@ -244,6 +251,15 @@ std::vector<struct dubins_curve> Dubins::dubins_multi_point(double x0, double y0
 {
   std::vector<struct dubins_curve> curves;
   std::vector<double> known_point = {xf, yf, thf};
+
+  //? print the input
+  std::cout << "x0: " << x0 << " y0: " << y0 << " th0: " << th0 << "\n";
+  std::cout << "xf: " << xf << " yf: " << yf << " thf: " << thf << "\n";
+  std::cout << "Points: \n";
+  for (auto &p : points)
+  {
+    std::cout << "x: " << p.at(0) << " y: " << p.at(1) << "\n";
+  }
 
   for (auto it = points.rbegin(); it != points.rend(); ++it)
   {
@@ -277,8 +293,73 @@ std::vector<struct dubins_curve> Dubins::dubins_multi_point(double x0, double y0
   return curves;
 }
 
-bool Dubins::valid_curve(struct dubins_curve curve, boost::geometry::model::multi_polygon<polygon_t> &map)
+bool Dubins::valid_curve(struct dubins_curve curve, RRT &_rrt, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
+  // if (curve.a1.L > 0)
+  // {
+  //   auto points = this->segment_arc(curve.a1, 2);
+  //   for (size_t i = 0; i < points.size() - 1; ++i)
+  //   {
+  //     auto &p1_0 = points[i];
+  //     auto &p1_1 = points[i + 1];
+
+  //     // std::cout << "Checking segment from (" << p1_0.at(0) << ", " << p1_0.at(1) << ") "
+  //               // << "to (" << p1_1.at(0) << ", " << p1_1.at(1) << ")\n";
+
+  //     if (!this->valid_segment(p1_0, p1_1, map))
+  //     {
+  //       // std::cout << "Segment is invalid!\n";
+  //       return false;
+  //     }
+
+  //     // std::cout << "Segment is valid.\n";
+  //     // std::cout << "----------------\n";
+  //   }
+  // }
+  // if (curve.a2.L > 0)
+  // {
+  //   auto points = this->segment_arc(curve.a2, 2);
+  //   for (size_t i = 0; i < points.size() - 1; ++i)
+  //   {
+  //     auto &p1_0 = points[i];
+  //     auto &p1_1 = points[i + 1];
+
+  //     // std::cout << "Checking segment from (" << p1_0.at(0) << ", " << p1_0.at(1) << ") "
+  //               // << "to (" << p1_1.at(0) << ", " << p1_1.at(1) << ")\n";
+
+  //     if (!this->valid_segment(p1_0, p1_1, map))
+  //     {
+  //       // std::cout << "Segment is invalid!\n";
+  //       return false;
+  //     }
+
+  //     // std::cout << "Segment is valid.\n";
+  //     // std::cout << "----------------\n";
+  //   }
+  // }
+  // if (curve.a3.L > 0)
+  // {
+  //   auto points = this->segment_arc(curve.a3, 2);
+  //   for (size_t i = 0; i < points.size() - 1; ++i)
+  //   {
+  //     auto &p1_0 = points[i];
+  //     auto &p1_1 = points[i + 1];
+
+  //     // std::cout << "Checking segment from (" << p1_0.at(0) << ", " << p1_0.at(1) << ") "
+  //               // << "to (" << p1_1.at(0) << ", " << p1_1.at(1) << ")\n";
+
+  //     if (!this->valid_segment(p1_0, p1_1, map))
+  //     {
+  //       // std::cout << "Segment is invalid!\n";
+  //       return false;
+  //     }
+
+  //     // std::cout << "Segment is valid.\n";
+  //     // std::cout << "----------------\n";
+  //   }
+  // }
+
+  // return true;
   KDNode_t p1_0 = {curve.a1.x0, curve.a1.y0};
   KDNode_t p1_f = {curve.a1.xf, curve.a1.yf};
   KDNode_t p2_0 = {curve.a2.x0, curve.a2.y0};
