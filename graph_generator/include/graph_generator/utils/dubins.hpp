@@ -64,7 +64,10 @@ public:
   struct dubins_arc build_dubins_arc(double x0, double y0, double th0, double k, double L);
 
   // multipoint dubins
-  std::vector<struct dubins_curve> dubins_multi_point(double x0, double y0, double th0, double xf, double yf, double thf, std::vector<std::vector<double>> points, double kmax, RRT &_rrt, boost::geometry::model::multi_polygon<polygon_t> &map);
+  std::vector<struct dubins_curve> dubins_multi_point(double x0, double y0, double th0, double xf, double yf, double thf, std::vector<std::vector<double>> points, double kmax, boost::geometry::model::multi_polygon<polygon_t> &map);
   bool valid_curve(struct dubins_curve curve, boost::geometry::model::multi_polygon<polygon_t> &map);
+  bool valid_segment(KDNode_t &start, KDNode_t &end, boost::geometry::model::multi_polygon<polygon_t> &map);
+  void create_inflated_polygon(const point_t &p1, const point_t &p2, double epsilon, polygon_t &polygon);
 
+  std::vector<KDNode_t> segment_arc(const dubins_arc& arc, int segments);
 };

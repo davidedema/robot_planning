@@ -293,7 +293,35 @@ std::vector<struct dubins_curve> Dubins::dubins_multi_point(double x0, double y0
   return curves;
 }
 
-bool Dubins::valid_curve(struct dubins_curve curve, RRT &_rrt, boost::geometry::model::multi_polygon<polygon_t> &map)
+std::vector<KDNode_t> Dubins::segment_arc(const dubins_arc &arc, int segments)
+{
+  std::vector<KDNode_t> points;   // Vector to store the points
+  double step = arc.L / segments; // Segment length
+
+  for (int i = 0; i <= segments; ++i)
+  {
+    double s = i * step; // Distance along the arc
+    KDNode_t p(2);       // Assume KDNode_t is a 2D point like std::vector<double>(2)
+
+    if (std::abs(arc.k) < 1e-6)
+    {                                        // Straight line
+      p[0] = arc.x0 + s * std::cos(arc.th0); // x-coordinate
+      p[1] = arc.y0 + s * std::sin(arc.th0); // y-coordinate
+    }
+    else
+    {                                                                          // Circular arc
+      double R = 1.0 / arc.k;                                                  // Radius of curvature
+      p[0] = arc.x0 + R * (std::sin(arc.th0 + arc.k * s) - std::sin(arc.th0)); // x-coordinate
+      p[1] = arc.y0 - R * (std::cos(arc.th0 + arc.k * s) - std::cos(arc.th0)); // y-coordinate
+    }
+
+    points.push_back(p); // Add the point to the vector
+  }
+
+  return points;
+}
+
+bool Dubins::valid_curve(struct dubins_curve curve, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
   // if (curve.a1.L > 0)
   // {
