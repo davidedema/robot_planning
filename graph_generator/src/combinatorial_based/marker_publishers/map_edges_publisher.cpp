@@ -22,6 +22,7 @@ void MapEdgePublisherNode::publishEdges()
     {
 
         // Prepare Marker message
+        // Prepare Marker message
         auto marker = visualization_msgs::msg::Marker();
         marker.header.frame_id = "map";
         marker.header.stamp = this->get_clock()->now();
@@ -30,46 +31,43 @@ void MapEdgePublisherNode::publishEdges()
         marker.type =
             visualization_msgs::msg::Marker::LINE_LIST; // Use LINE_LIST for edges
         marker.action = visualization_msgs::msg::Marker::ADD;
-        marker.scale.x = 0.1; // Line width
-        marker.color.a = 1.0; // Alpha
-        marker.color.r = 1.0; // Red
-        marker.color.g = 1.0; // Red
+        marker.scale.x = 0.01; // Line width
+        marker.color.a = 1.0;  // Alpha
+        marker.color.r = 1.0;
+        marker.color.g = 1.0;
+        // Prepare Marker message
+        auto marker1 = visualization_msgs::msg::Marker();
+        marker1.header.frame_id = "map";
+        marker1.header.stamp = this->get_clock()->now();
+        marker1.ns = "out1";
+        marker1.id = 2;
+        marker1.type =
+            visualization_msgs::msg::Marker::POINTS; // Use LINE_LIST for edges
+        marker1.action = visualization_msgs::msg::Marker::ADD;
+        marker1.scale.x = 0.1; // Line width
+        marker1.scale.y = 0.1; // Line width
 
-        auto marker2 = visualization_msgs::msg::Marker();
-        marker2.header.frame_id = "map";
-        marker2.header.stamp = this->get_clock()->now();
-        marker2.ns = "in";
-        marker2.id = 0;
-        marker2.type =
-            visualization_msgs::msg::Marker::LINE_LIST; // Use LINE_LIST for edges
-        marker2.action = visualization_msgs::msg::Marker::ADD;
-        marker2.scale.x = 0.1; // Line width
-        marker2.color.a = 1.0; // Alpha
-        marker2.color.b = 1.0;
-        marker2.color.r = 1.0;
+        marker1.color.a = 1.0; // Alpha
+        marker1.color.r = 1.0;
+        marker1.color.g = 1.0;
 
         // Extract edges and populate marker points
         for (const auto &polygon : this->multi_polygon_)
         {
             // Outer ring
-            addEdgesToMarker(polygon.outer(), marker);
+            addEdgesToMarker(polygon.outer(), marker,marker1);
 
-            // Inner rings
-            for (const auto &inner_ring : polygon.inners())
-            {
-                addEdgesToMarker(inner_ring, marker2);
-            }
         }
         // Publish marker
         edge_publisher_->publish(marker);
-        edge_publisher_->publish(marker2);
+        edge_publisher_->publish(marker1);
     }
 
 }
 template <typename Ring>
 
 void MapEdgePublisherNode::addEdgesToMarker(const Ring &ring,
-                                            visualization_msgs::msg::Marker &marker)
+                                            visualization_msgs::msg::Marker &marker, visualization_msgs::msg::Marker &marker1)
 {
     for (std::size_t i = 0; i < ring.size(); ++i)
     {
@@ -88,6 +86,8 @@ void MapEdgePublisherNode::addEdgesToMarker(const Ring &ring,
         // Add to marker
         marker.points.push_back(ros_point1);
         marker.points.push_back(ros_point2);
+        marker1.points.push_back(ros_point1);
+        marker1.points.push_back(ros_point2);
     }
 }
 
@@ -153,7 +153,7 @@ void MapEdgePublisherNode::publishPoints()
 /////Simple edges Publisher//////////////////////////////////////////////
 
 SimpleEdgePublisherNode::SimpleEdgePublisherNode(
-    std::vector<line_xy_t> edges, std::string topic)
+    std::vector<line_t> edges, std::string topic)
     : Node(topic)
 {
     edges_ = edges;
@@ -188,6 +188,21 @@ void SimpleEdgePublisherNode::publishEdges()
         marker.color.a = 1.0; // Alpha
         marker.color.r = 1.0;
         marker.color.g = .5;
+        // Prepare Marker message
+        auto marker1 = visualization_msgs::msg::Marker();
+        marker1.header.frame_id = "map";
+        marker1.header.stamp = this->get_clock()->now();
+        marker1.ns = "out1";
+        marker1.id = 2;
+        marker1.type =
+            visualization_msgs::msg::Marker::POINTS; // Use LINE_LIST for edges
+        marker1.action = visualization_msgs::msg::Marker::ADD;
+        marker1.scale.x = 0.1; // Line width
+        marker1.scale.y = 0.1; // Line width
+
+        marker1.color.a = 1.0;  // Alpha
+        marker1.color.r = 1.0;
+        marker1.color.g = .5;
 
         for (std::size_t i = 0; i < edges_.size(); ++i)
         {
@@ -195,20 +210,23 @@ void SimpleEdgePublisherNode::publishEdges()
 
             // Convert to geometry_msgs::msg::Point
             geometry_msgs::msg::Point ros_point1, ros_point2;
-            ros_point1.x = edge[0].x();
-            ros_point1.y = edge[0].y();
+            ros_point1.x = bg::get<0,0>(edge);
+            ros_point1.y = bg::get<0,1>(edge);
             ros_point1.z = 0.0; // Assum 2D oints
-            ros_point2.x = edge[1].x();
-            ros_point2.y = edge[1].y();
+            ros_point2.x = bg::get<1,0>(edge);
+            ros_point2.y = bg::get<1,1>(edge);
             ros_point2.z = 0.0;
 
             // Add to marker
             marker.points.push_back(ros_point1);
             marker.points.push_back(ros_point2);
+            marker1.points.push_back(ros_point1);
+            marker1.points.push_back(ros_point2);
         }
 
         // Publish marker
         edge_publisher_->publish(marker);
+        edge_publisher_->publish(marker1);
     }
 }
 

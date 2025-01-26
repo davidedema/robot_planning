@@ -184,20 +184,6 @@ void MapConstruction::set_borders(const geometry_msgs::msg::Polygon &msg)
 
     map_borders.outer().push_back(map_borders.outer().front());
 
-    /*     // Inflate the polygon using Boost's buffer algorithm
-        boost::geometry::strategy::buffer::distance_symmetric<double> distance_strategy(-SHELFINO_INFLATION);
-        boost::geometry::strategy::buffer::join_miter join_strategy(SHELFINO_INFLATION);
-        boost::geometry::strategy::buffer::end_flat end_strategy;                              // Round ends
-        boost::geometry::strategy::buffer::point_circle circle_strategy(CIRCLE_APPROXIMATION); // Circle approximation
-        boost::geometry::strategy::buffer::side_straight side_strategy;                        // Straight sides
-                                                                                               // Straight sides
-
-        boost::geometry::buffer(map_borders, inflated_borders,
-                                distance_strategy,
-                                side_strategy,
-                                join_strategy,
-                                end_strategy,
-                                circle_strategy); */
 }
 
 polygon_t MapConstruction::get_borders()
@@ -209,14 +195,14 @@ void MapConstruction::set_gate(const geometry_msgs::msg::PoseArray &msg)
 {
     for (const auto &pose : msg.poses)
     {
-        std::vector<double> gate;
-        gate.push_back(pose.position.x);
-        gate.push_back(pose.position.y);
+        std::vector<double> gate = {pose.position.x, pose.position.y};
+
         tf2::Quaternion q(pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w);
         double r, p, y;
         tf2::Matrix3x3 m(q);
         m.getRPY(r, p, y);
         gate.push_back(y);
+
         gates.push_back(gate);
     }
 }
@@ -312,7 +298,7 @@ multi_polygon_t MapConstruction::get_clean_map()
 {
     if (!is_clean_map_created)
     {
-        //clean_map.emplace_back(map_borders);
+        // clean_map.emplace_back(map_borders);
 
         for (auto polygon : obstacle_arr)
         {
@@ -356,7 +342,7 @@ multi_polygon_t MapConstruction::get_inflated_map()
         clipperOffset.AddPaths(clipper_poly1, ClipperLib::jtMiter, ClipperLib::etClosedPolygon);
         ClipperLib::Paths paths_inflated_border;
         clipperOffset.Execute(paths_inflated_border, -SHELFINO_INFLATION * 1000);
-        // inflated_map.emplace_back(this->clipperToBoost(paths_inflated_border[0]));
+        inflated_borders = (this->clipperToBoost(paths_inflated_border[0]));
 
         // inflate obstacles
         ClipperLib::Paths inflated_vect_paths;
@@ -372,112 +358,83 @@ multi_polygon_t MapConstruction::get_inflated_map()
             inflated_vect_paths.emplace_back(inflated_path_obstacles[0]);
         }
 
-  /*       // check if the inflated obstacles are intersecting, if they do, uninize them
-        bool intersecting = true;
-        while (intersecting)
-        {
-            intersecting = false;
-            std::vector<ClipperLib::Path> new_inflated_vect_paths;
-            std::vector<ClipperLib::Path> to_ignore;
-            for (auto &inflated_1 : inflated_vect_paths)
-            {
-                bool intersect_polygon = false;
-                for (auto &inflated_2 : inflated_vect_paths)
-                {
-                    // if the polygon was unionized before, ignore it
-                    int cnt1 = count(to_ignore.begin(), to_ignore.end(), inflated_1);
-                    int cnt2 = count(to_ignore.begin(), to_ignore.end(), inflated_2);
-
-                    if (inflated_1 != inflated_2 && cnt1+cnt2==0)
-                    {
-                        if (doPolygonsIntersect(inflated_1, inflated_2))
-                        {
-                            intersect_polygon = true;
-                            intersecting = true;
-                            to_ignore.emplace_back(inflated_2);
-                            to_ignore.emplace_back(inflated_1);
-                        }
-                        ClipperLib::Clipper clipper_for_union;
-                        ClipperLib::Paths result;
-                        clipper_for_union.AddPath(inflated_1, ClipperLib::ptSubject, true);
-                        clipper_for_union.AddPath(inflated_2, ClipperLib::ptClip, true);
-                        clipper_for_union.Execute(ClipperLib::ctUnion, result);
-                        ClipperLib::Path unionized;
-
-                        std::cout << "Union of polygons:" << std::endl;
-                        for (const auto &path : result)
-                        {
-                            std::cout << "Path: ";
-                            for (const auto &point : path)
-                            {
-                                std::cout << "(" << point.X << ", " << point.Y << ") ";
-                                unionized.emplace_back(point);
-                            }
-                            std::cout << std::endl;
-                        }
-                        new_inflated_vect_paths.emplace_back(unionized);
-                        break;
-                    }
-                }
-                if (!intersect_polygon)
-                    new_inflated_vect_paths.emplace_back(inflated_1);
-            }
-            inflated_vect_paths = new_inflated_vect_paths;
-
-            std::cout << "Number of polygons" << inflated_vect_paths.size() << std::endl;
-        } */
-
-        ClipperLib::Clipper clipper_for_union;
-        ClipperLib::Paths result;
-        clipper_for_union.AddPath(inflated_vect_paths[0], ClipperLib::ptSubject, true);
-        clipper_for_union.AddPaths(inflated_vect_paths, ClipperLib::ptClip, true);
-        clipper_for_union.Execute(ClipperLib::ctUnion, result);
-
         std::vector<polygon_t> inflated_polygons;
         for (auto const &clip_poly : inflated_vect_paths)
         {
             inflated_polygons.emplace_back(this->clipperToBoost(clip_poly));
         }
-        // unionizing code
-        /*         bool intersecting = true;
-                while (intersecting)
-                {
-                    intersecting = false;
-                    std::vector<polygon_t> new_inflated_polygons;
-                    for (auto inflated_1 : inflated_polygons)
-                    {
-                        bool intersect_polygon = false;
-                        for (auto inflated_2 : inflated_polygons)
-                        {
-                            if (&inflated_1 != &inflated_2)
-                            {
-                                if (bg::intersects(inflated_1, inflated_2))
-                                {
-                                    intersect_polygon = true;
-                                    intersecting = true;
-                                }
-                                std::vector<polygon_t> unionized;
-                                bg::union_(inflated_1, inflated_2, unionized);
-                                new_inflated_polygons.emplace_back(unionized[0]);
-                                break;
-                            }
-                        }
-                        if (!intersect_polygon)
-                            new_inflated_polygons.emplace_back(inflated_1);
-                    }
-                    inflated_polygons = new_inflated_polygons;
-                } */
 
-        for (auto const &clip_poly : inflated_polygons)
+        std::vector<polygon_t> new_inflated_polygons;
+
+        for (auto const &poly : inflated_polygons)
         {
-            inflated_map.emplace_back(clip_poly);
+            std::vector<polygon_t> output;
+            bg::intersection(inflated_borders, poly, output);
+            new_inflated_polygons.emplace_back(output[0]);
+        }
+        inflated_polygons = new_inflated_polygons;
+
+        for (auto const &poly : inflated_polygons)
+        {
+            inflated_obstacles.emplace_back(poly);
         }
 
         is_inflated_map_created = true;
-        return inflated_map;
+        return inflated_obstacles;
     }
     else
     {
-        return inflated_map;
+        return inflated_obstacles;
     }
+}
+
+multi_polygon_t MapConstruction::get_unionized_inflated_map()
+{
+    // union between polygons
+    size_t intersection_detected = true;
+    multi_polygon_t inflated_polygons = inflated_obstacles;
+    while (intersection_detected)
+    {
+        multi_polygon_t new_polygons;
+        intersection_detected = false;
+        std::vector<size_t> index_to_exclude;
+        // union of 2 polygons
+        for (size_t i = 0; i < inflated_polygons.size(); i++)
+        {
+            bool intersected_polygon = false;
+            if (count(index_to_exclude.begin(), index_to_exclude.end(), i) == 0)
+            {
+                for (size_t z = 0; z < inflated_polygons.size(); z++)
+                {
+
+                    if (i != z && count(index_to_exclude.begin(), index_to_exclude.end(), z) == 0)
+                    {
+
+                        std::vector<polygon_t> output_poly;
+                        if (bg::intersects(inflated_polygons[i], inflated_polygons[z]))
+                        {
+                            bg::union_(inflated_polygons[i], inflated_polygons[z], output_poly);
+                            new_polygons.insert(new_polygons.end(), output_poly.begin(), output_poly.end());
+
+                            index_to_exclude.emplace_back(i);
+                            index_to_exclude.emplace_back(z);
+                            intersection_detected = true;
+                            intersected_polygon = true;
+                        }
+                    }
+                }
+                if (!intersected_polygon)
+                {
+                    new_polygons.emplace_back(inflated_polygons[i]);
+                }
+            }
+        }
+        inflated_polygons = new_polygons;
+    }
+    return inflated_polygons;
+}
+
+polygon_t MapConstruction::get_inflated_border()
+{
+    return inflated_borders;
 }

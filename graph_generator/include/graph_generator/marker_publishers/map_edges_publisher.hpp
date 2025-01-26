@@ -23,17 +23,17 @@ private:
 
     template <typename Ring>
     void addEdgesToMarker(const Ring &ring,
-                          visualization_msgs::msg::Marker &marker);
+                          visualization_msgs::msg::Marker &marker, visualization_msgs::msg::Marker &marker1);
 };
 
 class SimpleEdgePublisherNode : public rclcpp::Node
 {
 public:
-    std::vector<line_xy_t> edges_;
+    std::vector<line_t> edges_;
     std::string topic_;
 
     SimpleEdgePublisherNode(
-        std::vector<line_xy_t> edges_, std::string topic);
+        std::vector<line_t> edges_, std::string topic);
 
 private:
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr edge_publisher_;

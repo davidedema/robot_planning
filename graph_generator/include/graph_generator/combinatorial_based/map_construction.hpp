@@ -42,6 +42,7 @@ public:
     void set_pos1(const geometry_msgs::msg::PoseWithCovarianceStamped &msg);
     void set_pos2(const geometry_msgs::msg::PoseWithCovarianceStamped &msg);
     void set_pos3(const geometry_msgs::msg::PoseWithCovarianceStamped &msg);
+    polygon_t get_inflated_border();
 
     // getter for inflated_map
     std::vector<polygon_t> get_obstacles();
@@ -53,9 +54,9 @@ public:
     pose_t get_pose3();
 
     // get the inflated_map (polygon with holes replacing the obstacles)
-    boost::geometry::model::multi_polygon<polygon_t> get_inflated_map();
-
-    boost::geometry::model::multi_polygon<polygon_t> get_clean_map();
+    multi_polygon_t get_inflated_map();
+    multi_polygon_t get_unionized_inflated_map();
+    multi_polygon_t get_clean_map();
 
     ClipperLib::Paths boostToClipper(const polygon_t &boost_polygon);
     polygon_t clipperToBoost(const ClipperLib::Path &clipper_paths);
@@ -66,11 +67,9 @@ private:
     multi_polygon_t inflated_obstacles;
 
     polygon_t map_borders;
-    multi_polygon_t inflated_borders;
+    polygon_t inflated_borders;
     std::vector<pose_t> gates;
     multi_polygon_t clean_map;
-
-    multi_polygon_t inflated_map;
 
     pose_t pos1;
     pose_t pos2;

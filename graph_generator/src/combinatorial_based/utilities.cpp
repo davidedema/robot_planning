@@ -3,7 +3,7 @@
 // Function to check tangency
 #include "graph_generator/combinatorial_based/utilities.hpp"
 
-bool is_tangent(const line_xy_t &line, const polygon_xy_t &border, const multipolygon_xy_t &inner_polygons)
+/* bool is_tangent(const line_xy_t &line, const polygon_xy_t &border, const multipolygon_xy_t &inner_polygons)
 {
     // Multi-point to collect intersections
     multi_linestring_type intersections;
@@ -32,10 +32,10 @@ bool is_tangent(const line_xy_t &line, const polygon_xy_t &border, const multipo
 
     return true;
 }
+ */
 
 
-
-polygon_xy_t convertPolygon(const polygon_t &polygon)
+/* polygon_xy_t convertPolygon(const polygon_t &polygon)
 {
     polygon_xy_t polygon_xy;
 
@@ -72,3 +72,4 @@ multipolygon_xy_t convertMultiPolygon(const multi_polygon_t &multipolygon)
 
     return multipolygon_xy;
 }
+ */
