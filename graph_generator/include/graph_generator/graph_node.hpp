@@ -58,7 +58,7 @@ public:
   bool pos1_r_;
   bool pos2_r_;
   bool pos3_r_;
-
+  
   // flag for map creation
   bool is_map_created;
 
@@ -70,6 +70,7 @@ public:
   void set_pos1(const geometry_msgs::msg::PoseWithCovarianceStamped &msg);
   void set_pos2(const geometry_msgs::msg::PoseWithCovarianceStamped &msg);
   void set_pos3(const geometry_msgs::msg::PoseWithCovarianceStamped &msg);
+
 
   // getter for map
   std::vector<polygon_t> get_obstacles();

@@ -108,20 +108,56 @@ bool RRT::add_edge(KDNode_t &new_node, KDNode_t &nearest_node, boost::geometry::
     auto v_parent = this->graph_lookup[nearest_node];
     double distance = sqrt(pow(new_node.at(0) - nearest_node.at(0), 2) + pow(new_node.at(1) - nearest_node.at(1), 2));
     g[v_new].cost = g[v_parent].cost + distance;
-
+    g[v_new].l2_dist_h = sqrt(pow(new_node.at(0) - goal.at(0), 2) + pow(new_node.at(1) - goal.at(1), 2));
+    g[v_parent].childs.push_back(new_node);
     boost::add_edge(v_parent, v_new, g);
+
+    // do the double connection
+    g[v_new].childs.push_back(nearest_node);
+    g[v_parent].parents.push_back(new_node);
+
     //  update the graph and KDTree
     this->add_kd_node(new_node);
     return true;
   }
   return false;
 }
+
+bool RRT::attach_node(KDNode_t &new_node, KDNode_t &nearest_node, boost::geometry::model::multi_polygon<polygon_t> &map)
+{
+  //  add path between new_node and nearest_node
+  //! if the path and the points are inside the polygon
+  if (valid_segment(new_node, nearest_node, map))
+  {
+    auto v_new = boost::add_vertex(g);
+    g[v_new].node = new_node;
+    g[v_new].parents.push_back(new_node);
+    g[v_new].childs.push_back(nearest_node);
+    this->graph_lookup[new_node] = v_new;
+    auto v_child = this->graph_lookup[nearest_node];
+    g[v_new].cost = 0;
+    g[v_new].l2_dist_h = sqrt(pow(new_node.at(0) - goal.at(0), 2) + pow(new_node.at(1) - goal.at(1), 2));
+    g[v_child].parents.push_back(new_node);
+    boost::add_edge(v_child, v_new, g);
+
+    // double connection
+    g[v_child].childs.push_back(new_node);
+    g[v_new].parents.push_back(nearest_node);
+
+    //  update the graph and KDTree
+    this->add_kd_node(new_node);
+    return true;
+  }
+  return false;
+}
+
 bool RRT::add_node(KDNode_t &new_node)
 {
   auto v_new = boost::add_vertex(g);
   g[v_new].node = new_node;
   g[v_new].parents.push_back(new_node);
   g[v_new].cost = 0.0;
+  g[v_new].l2_dist_h = sqrt(pow(new_node.at(0) - goal.at(0), 2) + pow(new_node.at(1) - goal.at(1), 2));
   this->add_kd_node(new_node);
   return true;
 }
@@ -220,8 +256,8 @@ bool RRT::is_goal(KDNode_t &point)
 void RRT::set_problem(KDNode_t &start, KDNode_t &goal)
 {
   this->start = start;
-  this->add_node(start);
   this->goal = goal;
+  this->add_node(start);
 }
 
 std::vector<KDNode_t> RRT::get_path(KDNode_t &start)
@@ -242,6 +278,11 @@ std::vector<KDNode_t> RRT::get_path(KDNode_t &start)
     current = parent;
   }
   return path;
+}
+
+Graph RRT::get_graph()
+{
+  return this->g;
 }
 
 //----------- RRT* METHODS -----------//
@@ -331,8 +372,21 @@ std::vector<KDNode_t> RRT::smooth_path(std::vector<KDNode_t> &path, boost::geome
     {
       --i;
       point_b = path.at(i);
+
+      // try{
+      //   point_b = path.at(i);
+      // }
+      // catch(const std::out_of_range& e){
+      //   finish = true;
+      //   new_path = path;
+      // }
     }
   }
 
   return new_path;
+}
+
+std::map<KDNode_t, vertex_t> RRT::get_lookup()
+{
+  return this->graph_lookup;
 }

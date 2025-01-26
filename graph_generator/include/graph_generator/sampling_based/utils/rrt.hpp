@@ -21,7 +21,9 @@ struct node
 {
   KDNode_t node;
   std::vector<KDNode_t> parents;
+  std::vector<KDNode_t> childs;
   double cost;
+  double l2_dist_h;
 };
 
 // Define the graph type
@@ -58,6 +60,8 @@ public:
   ~RRT();
 
   // main functions
+  Graph get_graph();
+  std::map<KDNode_t, vertex_t> get_lookup();
   void set_problem(KDNode_t &start, KDNode_t &goal);
   KDNode_t get_random_point(int index, boost::geometry::model::multi_polygon<polygon_t> &map);
   KDNode_t next_point(KDNode_t &sampled_point, KDNode_t &nearest, boost::geometry::model::multi_polygon<polygon_t> &map);
@@ -67,6 +71,7 @@ public:
   void add_kd_node(KDNode_t &node);
   bool are_nodes_equal(const KDNode_t &a, const KDNode_t &b);
   bool add_edge(KDNode_t &new_node, KDNode_t &nearest_node, boost::geometry::model::multi_polygon<polygon_t> &map);
+  bool attach_node(KDNode_t &new_node, KDNode_t &nearest_node, boost::geometry::model::multi_polygon<polygon_t> &map);
   bool add_node(KDNode_t &new_node);
   bool valid_point(KDNode_t &result, boost::geometry::model::multi_polygon<polygon_t> &map);
   bool valid_segment(KDNode_t &start, KDNode_t &end, boost::geometry::model::multi_polygon<polygon_t> &map);

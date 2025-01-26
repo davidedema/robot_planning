@@ -1,11 +1,11 @@
 #pragma once
 
 #include <vector>
-#include <cmath>  
+#include <cmath>
 #include <cstdlib>
 #include <iostream>
-
-#include "graph_generator/sampling_based/utils/rrt.hpp"
+#include <boost/geometry.hpp>
+#include <boost/geometry/geometries/polygon.hpp>
 
 struct dubins_arc
 {
@@ -27,12 +27,17 @@ struct dubins_curve
   double L;
 };
 
+typedef boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> point_t;
+typedef boost::geometry::model::polygon<point_t> polygon_t;
+typedef boost::geometry::model::segment<point_t> segment_t;
+typedef std::vector<double> KDNode_t;
+
 class Dubins
 {
 
 public:
   // constructor and distructor
-  Dubins(std::vector<double> start, std::vector<double> end, double Kmax);
+  Dubins();
   ~Dubins();
 
   // utils
@@ -51,7 +56,7 @@ public:
   std::vector<double> d_lrl(double sc_th0, double sc_thf, double sc_kmax);
 
   // main
-  struct dubins_curve dubins_shortest_path(double x0, double y0, double th0, double xf, double yf, double thf, double kmax, RRT &_rrt, boost::geometry::model::multi_polygon<polygon_t> &map);
+  struct dubins_curve dubins_shortest_path(double x0, double y0, double th0, double xf, double yf, double thf, double kmax, boost::geometry::model::multi_polygon<polygon_t> &map);
   // helper
   std::vector<std::vector<double> (Dubins::*)(double, double, double)> function_vector;
   std::vector<double> call_function(int index, double sc_th0, double sc_thf, double sc_kmax);
@@ -59,12 +64,10 @@ public:
   struct dubins_arc build_dubins_arc(double x0, double y0, double th0, double k, double L);
 
   // multipoint dubins
-  std::vector<struct dubins_curve> dubins_multi_point(double x0, double y0, double th0, double xf, double yf, double thf, std::vector<std::vector<double>> points, double kmax, RRT &_rrt, boost::geometry::model::multi_polygon<polygon_t> &map);
-  bool valid_curve(struct dubins_curve curve, RRT &_rrt, boost::geometry::model::multi_polygon<polygon_t> &map);
+  std::vector<struct dubins_curve> dubins_multi_point(double x0, double y0, double th0, double xf, double yf, double thf, std::vector<std::vector<double>> points, double kmax, boost::geometry::model::multi_polygon<polygon_t> &map);
+  bool valid_curve(struct dubins_curve curve, boost::geometry::model::multi_polygon<polygon_t> &map);
+  bool valid_segment(KDNode_t &start, KDNode_t &end, boost::geometry::model::multi_polygon<polygon_t> &map);
+  void create_inflated_polygon(const point_t &p1, const point_t &p2, double epsilon, polygon_t &polygon);
 
-
-private:
-  std::vector<double> start;
-  std::vector<double> end;
-  double Kmax;
+  std::vector<KDNode_t> segment_arc(const dubins_arc& arc, int segments);
 };
