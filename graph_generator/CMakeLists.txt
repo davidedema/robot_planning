@@ -38,13 +38,17 @@ add_executable(test_shortest_path
   src/shortest_path_node.cpp
   src/combinatorial_based/map_construction.cpp
   src/combinatorial_based/marker_publishers/map_edges_publisher.cpp
+  src/combinatorial_based/marker_publishers/PointMarker.cpp
+
   src/combinatorial_based/map_utilities.cpp
+    src/combinatorial_based/path_utilities.cpp
+
   src/combinatorial_based/utilities.cpp
   src/combinatorial_based/shortest_graph.cpp
 
-
   src/graph_node.cpp
   src/utils/dubins.cpp
+
   ${CLIPPER_SRC}
 )
 

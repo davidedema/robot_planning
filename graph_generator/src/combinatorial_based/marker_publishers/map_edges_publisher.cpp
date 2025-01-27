@@ -285,3 +285,5 @@ void SimplePointPublisherNode::publishPoints()
         point_publisher_->publish(marker);
     }
 }
+
+

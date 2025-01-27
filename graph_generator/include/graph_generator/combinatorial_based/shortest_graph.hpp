@@ -83,7 +83,7 @@ private:
     Graph_s
     convert_to_graph(const std::vector<line_t> &multi_linestring, std::map<Vertex, point_t> &vertex_points);
     Vertex find_vertex_by_point(const point_t &target_point, const std::map<Vertex, point_t> &vertex_points);
-    std::vector<point_t> calculate_path(std::vector<line_t> lines_to_transform);
+    std::vector<point_t> calculate_path(std::vector<line_t> lines_to_transform, const point_t starting_point);
 
 public:
     ShortestGraph(

@@ -55,3 +55,4 @@ private:
     rclcpp::TimerBase::SharedPtr timer_;
     void publishPoints();
 };
+
