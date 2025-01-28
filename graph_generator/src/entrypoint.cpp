@@ -5,7 +5,7 @@
 #include <visualization_msgs/msg/marker.hpp>
 #include <geometry_msgs/msg/point.hpp>
 #include <vector>
-#include "graph_generator/graph_node.hpp"
+#include "graph_generator/map_generator.hpp"
 #include "graph_generator/sampling_based/utils/rrt.hpp"
 #include "graph_generator/sampling_based/utils/kdtree.hpp"
 
@@ -332,17 +332,25 @@ nav_msgs::msg::Path convertDubinsPathToNavPath(const std::vector<dubins_curve> &
 
 int main(int argc, char **argv)
 {
-
+  // SETUP ---------------------------------------------------------------------
   rclcpp::init(argc, argv);
 
   // Create the node
   auto node = std::make_shared<PointMarkerNode>();
 
+  // curvature max for the shelfinos
   double kmax = 2;
 
-  // Monitor execution time
-  auto m = std::make_shared<GraphGenerator>();
+  // flag for checking the addition of the shelfino 2
+  bool shelfino2_added = false;
 
+  std::vector<std::vector<double>> shelfino1_path;
+  std::vector<std::vector<double>> shelfino2_path;
+  // BUILD MAP -----------------------------------------------------------------
+  // Used for generating the map
+  auto m = std::make_shared<MapGenerator>();
+
+  // Wait that all the info for building the map are received
   RCLCPP_INFO(m->get_logger(), "Waiting for obstacles, borders and gates...");
   while (!m->obstacles_r_ || !m->borders_r_ || !m->gates_r_ || !m->pos1_r_ || !m->pos2_r_)
   {
@@ -355,39 +363,80 @@ int main(int argc, char **argv)
   RCLCPP_INFO(m->get_logger(), "\033[1;32m Map built\033[0m");
   RCLCPP_INFO(m->get_logger(), "Sampling test");
 
+  // PRE MAPF -------------------------------------------------------------------
+  RCLCPP_INFO(m->get_logger(), "Calculating distances and scoring...");
+
+  // Get obstacles and positions
+  auto obstacles = m->get_obstacles();
+  auto shelfino1_pos = m->get_pose1(); // [x, y, theta]
+  auto shelfino2_pos = m->get_pose2();
+
+  // Function to calculate distance from a point to all obstacles
+  auto calculate_distance = [](const pose_t &shelfino_pos, const std::vector<polygon_t> &obstacles) -> double
+  {
+    double min_distance = std::numeric_limits<double>::max();
+    for (const auto &obstacle : obstacles)
+    {
+      for (const auto &pt : obstacle.outer())
+      {
+        double dist = boost::geometry::distance(point_t(shelfino_pos[0], shelfino_pos[1]), pt);
+        if (dist < min_distance)
+        {
+          min_distance = dist;
+        }
+      }
+    }
+    return min_distance;
+  };
+
+  // Calculate distances
+  double shelfino1_distance = calculate_distance(shelfino1_pos, obstacles);
+  double shelfino2_distance = calculate_distance(shelfino2_pos, obstacles);
+
+  // Scoring logic
+  double shelfino1_score = shelfino1_distance > 1.0 ? shelfino1_distance * 10 : 0; // Example scoring rule
+  double shelfino2_score = shelfino2_distance > 1.0 ? shelfino2_distance * 10 : 0;
+
+  // Print results
+  RCLCPP_INFO(m->get_logger(), "Shelfino 1 Distance: %f, Score: %f", shelfino1_distance, shelfino1_score);
+  RCLCPP_INFO(m->get_logger(), "Shelfino 2 Distance: %f, Score: %f", shelfino2_distance, shelfino2_score);
+
+  // RRT -----------------------------------------------------------------------
+  // Create the RRT object
   RRT _rrt;
 
+  // Variables for storing the sampled points and the paths
   std::vector<std::vector<double>> sampled_points;
-  std::vector<std::vector<double>> path_points;
-  std::vector<std::vector<double>> path_points2;
+  std::vector<std::vector<double>> path;
 
-  // Pose for shelfino1
+  // Retrive pose for shelfino 1
   KDNode_t start_shelfino1 = {m->get_pose1().at(0), m->get_pose1().at(1)};
   KDNode_t goal = {m->get_gate().at(0), m->get_gate().at(1)};
-  vector<KDNode_t> path;
+  vector<KDNode_t> rrt_path;
   _rrt.set_problem(start_shelfino1, goal);
 
-  // Main tree -> created from shelfino1
+  // Main tree -> created from shelfino1 (sample 8000 points)
 
   for (uint i = 1; i < 8000; i++)
   {
-    auto point = _rrt.get_random_point(i, map);
-    auto nearest = _rrt.get_nn(point, 1);
-    auto new_point = _rrt.next_point(point, nearest, map);
-    auto best_one = _rrt.get_best_neighbor(new_point, nearest, 0.3, map);
-    if (_rrt.add_edge(new_point, best_one, map))
+    auto point = _rrt.get_random_point(i, map);                           // sample random point
+    auto nearest = _rrt.get_nn(point, 1);                                 // get nn
+    auto new_point = _rrt.next_point(point, nearest, map);                // get next point by steering
+    auto best_one = _rrt.get_best_neighbor(new_point, nearest, 0.3, map); // get best neighbor
+    if (_rrt.add_edge(new_point, best_one, map))                          // add edge if the new point is not in collision
     {
       sampled_points.push_back(new_point);
-    }
-    _rrt.rewire(new_point, 0.3, map);
-    if (_rrt.is_goal(new_point))
-    {
-      path = _rrt.get_path(new_point);
-      break;
+      _rrt.rewire(new_point, 0.3, map); // rewire the tree
+      if (_rrt.is_goal(new_point))      // if goal is reached break
+      {
+        rrt_path = _rrt.get_path(new_point);
+        break;
+      }
     }
   }
 
-  if (path.empty())
+  // Check if a path is found
+  if (rrt_path.empty())
   {
     RCLCPP_ERROR(m->get_logger(), "No path found, try sampling more points");
     return -1;
@@ -400,64 +449,103 @@ int main(int argc, char **argv)
     node->setSampledPoints(sampled_points);
   }
 
-  // Pose for shelfino 2
+  // Retrive pose for shelfino 2
   KDNode_t start_shelfino2 = {m->get_pose2().at(0), m->get_pose2().at(1)};
 
   RCLCPP_INFO(m->get_logger(), "Retrived position for shelfino 2");
 
   // Add shelfino 2 start_shelfino1 node to the graph
   auto nearest2 = _rrt.get_nn(start_shelfino2, 1);
+  // print nearest2
   RCLCPP_INFO(m->get_logger(), "Get nn for shelfino 2");
+
+  Orchestrator _orchestrator_shelfino1(_rrt.get_graph(), _rrt.get_lookup());
+
   if (_rrt.attach_node(start_shelfino2, nearest2, map))
   {
     RCLCPP_INFO(m->get_logger(), "\033[1;32m Added start shelfino 2\033[0m");
+    shelfino2_added = true;
+    // MAPF ---------------------------------------------------------------------
+    RCLCPP_INFO(m->get_logger(), "\033[1;32m Starting finding the joint plan...\033[0m");
+    // Create the two objects
+    Orchestrator _orchestrator_shelfino1(_rrt.get_graph(), _rrt.get_lookup());
+
+    // find the two shortest path
+    RCLCPP_INFO(m->get_logger(), "A* search for shelfino 1 started");
+    auto path_astar1 = _orchestrator_shelfino1.astar_search(start_shelfino1, *(rrt_path.end() - 1));
+    RCLCPP_INFO(m->get_logger(), "A* search for shelfino 1 ended");
+    RCLCPP_INFO(m->get_logger(), "A* search for shelfino 2 started");
+    auto path_astar2 = _orchestrator_shelfino1.astar_search(start_shelfino2, *(rrt_path.end() - 1));
+
+    RCLCPP_INFO(m->get_logger(), "A* search for shelfino 2 ended");
+
+    // smooth it
+    RCLCPP_INFO(m->get_logger(), "Smoothing path 1");
+    shelfino1_path = _rrt.smooth_path(path_astar1, map);
+    // print path
+    for (auto p : shelfino1_path)
+    {
+      RCLCPP_INFO(m->get_logger(), "Path 1: %f %f", p.at(0), p.at(1));
+    }
+    RCLCPP_INFO(m->get_logger(), "Smoothing path 2");
+    shelfino2_path = _rrt.smooth_path(path_astar2, map);
+    for (auto p : shelfino2_path)
+    {
+      RCLCPP_INFO(m->get_logger(), "Path 2: %f %f", p.at(0), p.at(1));
+    }
+    RCLCPP_INFO(m->get_logger(), "Paths smoothed");
+
+    // Display path
+    if (DISPLAY_PATH_1)
+    {
+      node->setPathPoints(shelfino1_path);
+    }
+    if (DISPLAY_PATH_2)
+    {
+      node->setPathPoints(shelfino2_path);
+    }
+    RCLCPP_INFO(m->get_logger(), "\033[1;32m Path founded! \033[0m");
+  }
+  else
+  {
+    RCLCPP_ERROR(m->get_logger(), "Error adding start shelfino 2, run rrt from shelfino 2");
+    RRT _rrt2;
+    vector<KDNode_t> rrt_path2;
+    _rrt2.set_problem(start_shelfino2, goal);
+    for (uint i = 1; i < 8000; i++)
+    {
+      auto point = _rrt2.get_random_point(i, map);                           // sample random point
+      auto nearest = _rrt2.get_nn(point, 1);                                 // get nn
+      auto new_point = _rrt2.next_point(point, nearest, map);                // get next point by steering
+      auto best_one = _rrt2.get_best_neighbor(new_point, nearest, 0.3, map); // get best neighbor
+      if (_rrt2.add_edge(new_point, best_one, map))                          // add edge if the new point is not in collision
+      {
+        sampled_points.push_back(new_point);
+        _rrt2.rewire(new_point, 0.3, map); // rewire the tree
+        if (_rrt2.is_goal(new_point))      // if goal is reached break
+        {
+          rrt_path2 = _rrt2.get_path(new_point);
+          break;
+        }
+      }
+    }
+    if (rrt_path2.empty())
+    {
+      RCLCPP_ERROR(m->get_logger(), "No path found, try sampling more points");
+      return -1;
+    }
+    RCLCPP_INFO(m->get_logger(), "\033[1;32m Founded second path \033[0m");
+
+    Orchestrator _orchestrator_shelfino2(_rrt2.get_graph(), _rrt2.get_lookup());
+
+    auto path_astar1 = _orchestrator_shelfino1.astar_search(start_shelfino1, *(rrt_path.end() - 1));
+    auto path_astar2 = _orchestrator_shelfino2.astar_search(start_shelfino2, *(rrt_path2.end() - 1));
+
+    shelfino1_path = _rrt.smooth_path(path_astar1, map);
+    shelfino2_path = _rrt2.smooth_path(path_astar2, map);
   }
 
-  RCLCPP_INFO(m->get_logger(), "\033[1;32m Starting finding the joint plan...\033[0m");
-  //* Multi agent path finding
-  Orchestrator _orchestrator_shelfino1(_rrt.get_graph(), _rrt.get_lookup());
-  Orchestrator _orchestrator_shelfino2(_rrt.get_graph(), _rrt.get_lookup());
-
-  // find the two shortest path
-  RCLCPP_INFO(m->get_logger(), "A* search for shelfino 1 started");
-  auto path_astar1 = _orchestrator_shelfino1.astar_search(start_shelfino1, *(path.end() - 1));
-  RCLCPP_INFO(m->get_logger(), "A* search for shelfino 1 ended");
-  RCLCPP_INFO(m->get_logger(), "A* search for shelfino 2 started");
-  auto path_astar2 = _orchestrator_shelfino2.astar_search(start_shelfino2, *(path.end() - 1));
-  if (path_astar2.size() == 0)
-  {
-    throw std::runtime_error("Empty path2");
-    return -1;
-  }
-  RCLCPP_INFO(m->get_logger(), "A* search for shelfino 2 ended");
-
-  // smooth it
-  RCLCPP_INFO(m->get_logger(), "Smoothing path 1");
-  auto shelfino1_path = _rrt.smooth_path(path_astar1, map);
-  // print path
-  for (auto p : shelfino1_path)
-  {
-    RCLCPP_INFO(m->get_logger(), "Path 1: %f %f", p.at(0), p.at(1));
-  }
-  RCLCPP_INFO(m->get_logger(), "Smoothing path 2");
-  auto shelfino2_path = _rrt.smooth_path(path_astar2, map);
-  for (auto p : shelfino2_path)
-  {
-    RCLCPP_INFO(m->get_logger(), "Path 2: %f %f", p.at(0), p.at(1));
-  }
-  RCLCPP_INFO(m->get_logger(), "Paths smoothed");
-  // Display path
-  if (DISPLAY_PATH_1)
-  {
-    node->setPathPoints(shelfino1_path);
-  }
-  if (DISPLAY_PATH_2)
-  {
-    node->setPathPoints(shelfino2_path);
-  }
-  RCLCPP_INFO(m->get_logger(), "\033[1;32m Path founded! \033[0m");
-
-  //* Create dubinized version of the path
+  // DUBINS -------------------------------------------------------------------
   RCLCPP_INFO(m->get_logger(), "\033[1;32m Dubinising paths \033[0m");
   Dubins d;
   // For creating the dubins path, we need to remove the start and the goal
@@ -466,8 +554,17 @@ int main(int argc, char **argv)
   shelfino2_path.erase(shelfino2_path.begin());
   shelfino2_path.erase(shelfino2_path.end());
 
+  std::cout << "######################" << std::endl;
+  std::cout << "DUBINS 1" << std::endl;
+  std::cout << "######################" << std::endl;
+
   auto shelfino1_d_path = d.dubins_multi_point(start_shelfino1.at(0), start_shelfino1.at(1), m->get_pose1().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino1_path, kmax, map);
   RCLCPP_INFO(m->get_logger(), "Dubins path for shelfino 1 created");
+
+  std::cout << "######################" << std::endl;
+  std::cout << "DUBINS 2" << std::endl;
+  std::cout << "######################" << std::endl;
+
   auto shelfino2_d_path = d.dubins_multi_point(start_shelfino2.at(0), start_shelfino2.at(1), m->get_pose2().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino2_path, kmax, map);
   RCLCPP_INFO(m->get_logger(), "Dubins path for shelfino 2 created");
   auto shelfino1_nav2 = convertDubinsPathToNavPath(shelfino1_d_path);
@@ -478,10 +575,6 @@ int main(int argc, char **argv)
     throw std::runtime_error("Empty path");
     return -1;
   }
-
-  // Send the paths to the nav2 controller
-  // node->send_nav2(shelfino1_nav2, shelfino2_nav2);
-  // rclcpp::spin(node);
 
   shelfino1_path.push_back({goal.at(0), goal.at(1)});
   shelfino1_path.insert(shelfino1_path.begin(), {start_shelfino1.at(0), start_shelfino1.at(1)});
@@ -496,14 +589,10 @@ int main(int argc, char **argv)
     RCLCPP_INFO(m->get_logger(), "\033[1;33m Found a collision \033[0m");
     // get the collision point as a KDNode_t
     KDNode_t collision_point = {shelfino1_nav2.poses.at(collision_index).pose.position.x, shelfino1_nav2.poses.at(collision_index).pose.position.y};
-    double score1 = _orchestrator_shelfino1.compute_score(shelfino1_nav2, collision_index);
-    double score2 = _orchestrator_shelfino2.compute_score(shelfino2_nav2, collision_index);
-    // print scores
-
     // who has the largest score has to deviate the path
-    if (score1 > score2)
+    if (shelfino1_score < shelfino2_score)
     {
-      shelfino1_path = _orchestrator_shelfino1.reschedule_path(shelfino1_path, collision_point, 0.5);
+      shelfino1_path = _orchestrator_shelfino1.reschedule_path(shelfino1_path, collision_point, 1);
       shelfino1_path.erase(shelfino1_path.begin());
       shelfino1_path.erase(shelfino1_path.end());
       shelfino1_d_path = d.dubins_multi_point(start_shelfino1.at(0), start_shelfino1.at(1), m->get_pose1().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino1_path, kmax, map);
@@ -514,7 +603,7 @@ int main(int argc, char **argv)
     else
     {
       // reschedule for shelfino 2
-      shelfino2_path = _orchestrator_shelfino2.reschedule_path(shelfino2_path, collision_point, 0.5);
+      shelfino2_path = _orchestrator_shelfino1.reschedule_path(shelfino2_path, collision_point, 1);
       shelfino2_path.erase(shelfino2_path.begin());
       shelfino2_path.erase(shelfino2_path.end());
       shelfino2_d_path = d.dubins_multi_point(start_shelfino2.at(0), start_shelfino2.at(1), m->get_pose2().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino2_path, kmax, map);

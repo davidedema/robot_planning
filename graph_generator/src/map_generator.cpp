@@ -1,6 +1,6 @@
-#include "graph_generator/graph_node.hpp"
+#include "graph_generator/map_generator.hpp"
 
-GraphGenerator::GraphGenerator() : Node("GraphGenerator")
+MapGenerator::MapGenerator() : Node("MapGenerator")
 {
 
   // create the QoS for the subscribers
@@ -15,22 +15,22 @@ GraphGenerator::GraphGenerator() : Node("GraphGenerator")
   const auto qos = rclcpp::QoS(rclcpp::KeepLast(1), qos_profile_custom);
 
   subscription_borders_ = this->create_subscription<geometry_msgs::msg::Polygon>(
-      "/map_borders", qos, std::bind(&GraphGenerator::callback_borders, this, std::placeholders::_1));
+      "/map_borders", qos, std::bind(&MapGenerator::callback_borders, this, std::placeholders::_1));
   subscription_obstacles_ = this->create_subscription<obstacles_msgs::msg::ObstacleArrayMsg>(
-      "/obstacles", qos, std::bind(&GraphGenerator::callback_obstacles, this, std::placeholders::_1));
+      "/obstacles", qos, std::bind(&MapGenerator::callback_obstacles, this, std::placeholders::_1));
   subscription_gates_ = this->create_subscription<geometry_msgs::msg::PoseArray>(
-      "/gates", qos, std::bind(&GraphGenerator::callback_gates, this, std::placeholders::_1));
+      "/gates", qos, std::bind(&MapGenerator::callback_gates, this, std::placeholders::_1));
   subscription_position1_ = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
-      "/shelfino1/amcl_pose", qos, std::bind(&GraphGenerator::callback_pos1, this, std::placeholders::_1));
+      "/shelfino1/amcl_pose", qos, std::bind(&MapGenerator::callback_pos1, this, std::placeholders::_1));
   subscription_position2_ = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
-      "/shelfino2/amcl_pose", qos, std::bind(&GraphGenerator::callback_pos2, this, std::placeholders::_1));
+      "/shelfino2/amcl_pose", qos, std::bind(&MapGenerator::callback_pos2, this, std::placeholders::_1));
   subscription_position3_ = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
-      "/shelfino3/amcl_pose", qos, std::bind(&GraphGenerator::callback_pos3, this, std::placeholders::_1));
+      "/shelfino3/amcl_pose", qos, std::bind(&MapGenerator::callback_pos3, this, std::placeholders::_1));
 }
 
-GraphGenerator::~GraphGenerator() {}
+MapGenerator::~MapGenerator() {}
 
-void GraphGenerator::callback_borders(const geometry_msgs::msg::Polygon::SharedPtr msg)
+void MapGenerator::callback_borders(const geometry_msgs::msg::Polygon::SharedPtr msg)
 {
   subscription_borders_.reset();
   if (!msg->points.empty())
@@ -44,7 +44,7 @@ void GraphGenerator::callback_borders(const geometry_msgs::msg::Polygon::SharedP
   }
 }
 
-void GraphGenerator::callback_obstacles(const obstacles_msgs::msg::ObstacleArrayMsg::SharedPtr msg)
+void MapGenerator::callback_obstacles(const obstacles_msgs::msg::ObstacleArrayMsg::SharedPtr msg)
 {
   subscription_obstacles_.reset();
   if (!msg->obstacles.empty())
@@ -58,7 +58,7 @@ void GraphGenerator::callback_obstacles(const obstacles_msgs::msg::ObstacleArray
   }
 }
 
-void GraphGenerator::callback_gates(const geometry_msgs::msg::PoseArray::SharedPtr msg)
+void MapGenerator::callback_gates(const geometry_msgs::msg::PoseArray::SharedPtr msg)
 {
   subscription_gates_.reset();
   if (!msg->poses.empty())
@@ -72,43 +72,43 @@ void GraphGenerator::callback_gates(const geometry_msgs::msg::PoseArray::SharedP
   }
 }
 
-void GraphGenerator::callback_pos1(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg)
+void MapGenerator::callback_pos1(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg)
 {
   subscription_position1_.reset();
   pos1_r_ = true;
   this->set_pos1(*msg);
 }
 
-void GraphGenerator::callback_pos2(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg)
+void MapGenerator::callback_pos2(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg)
 {
   subscription_position2_.reset();
   pos2_r_ = true;
   this->set_pos2(*msg);
 }
 
-void GraphGenerator::callback_pos3(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg)
+void MapGenerator::callback_pos3(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg)
 {
   subscription_position3_.reset();
   pos3_r_ = true;
   this->set_pos3(*msg);
 }
 
-pose_t GraphGenerator::get_pose1()
+pose_t MapGenerator::get_pose1()
 {
   return pos1;
 }
 
-pose_t GraphGenerator::get_pose2()
+pose_t MapGenerator::get_pose2()
 {
   return pos2;
 }
 
-pose_t GraphGenerator::get_pose3()
+pose_t MapGenerator::get_pose3()
 {
   return pos3;
 }
 
-void GraphGenerator::set_obstacles(const obstacles_msgs::msg::ObstacleArrayMsg &msg)
+void MapGenerator::set_obstacles(const obstacles_msgs::msg::ObstacleArrayMsg &msg)
 {
 
   polygon_t aux_p; // aux polygon
@@ -156,7 +156,7 @@ void GraphGenerator::set_obstacles(const obstacles_msgs::msg::ObstacleArrayMsg &
   this->inflate_obstacles();
 }
 
-void GraphGenerator::inflate_obstacles()
+void MapGenerator::inflate_obstacles()
 {
   for (auto &obstacle : obstacle_arr)
   {
@@ -185,12 +185,12 @@ void GraphGenerator::inflate_obstacles()
   }
 }
 
-std::vector<polygon_t> GraphGenerator::get_obstacles()
+std::vector<polygon_t> MapGenerator::get_obstacles()
 {
   return obstacle_arr;
 }
 
-void GraphGenerator::set_borders(const geometry_msgs::msg::Polygon &msg)
+void MapGenerator::set_borders(const geometry_msgs::msg::Polygon &msg)
 {
   for (auto const &point : msg.points)
   {
@@ -222,12 +222,12 @@ void GraphGenerator::set_borders(const geometry_msgs::msg::Polygon &msg)
                           circle_strategy);
 }
 
-polygon_t GraphGenerator::get_borders()
+polygon_t MapGenerator::get_borders()
 {
   return map_borders;
 }
 
-void GraphGenerator::set_gate(const geometry_msgs::msg::PoseArray &msg)
+void MapGenerator::set_gate(const geometry_msgs::msg::PoseArray &msg)
 {
   for (const auto &pose : msg.poses)
   {
@@ -243,7 +243,7 @@ void GraphGenerator::set_gate(const geometry_msgs::msg::PoseArray &msg)
   }
 }
 
-void GraphGenerator::set_pos1(const geometry_msgs::msg::PoseWithCovarianceStamped &msg)
+void MapGenerator::set_pos1(const geometry_msgs::msg::PoseWithCovarianceStamped &msg)
 {
   pos1.push_back(msg.pose.pose.position.x);
   pos1.push_back(msg.pose.pose.position.y);
@@ -254,7 +254,7 @@ void GraphGenerator::set_pos1(const geometry_msgs::msg::PoseWithCovarianceStampe
   pos1.push_back(y);
 }
 
-void GraphGenerator::set_pos2(const geometry_msgs::msg::PoseWithCovarianceStamped &msg)
+void MapGenerator::set_pos2(const geometry_msgs::msg::PoseWithCovarianceStamped &msg)
 {
   pos2.push_back(msg.pose.pose.position.x);
   pos2.push_back(msg.pose.pose.position.y);
@@ -265,7 +265,7 @@ void GraphGenerator::set_pos2(const geometry_msgs::msg::PoseWithCovarianceStampe
   pos2.push_back(y);
 }
 
-void GraphGenerator::set_pos3(const geometry_msgs::msg::PoseWithCovarianceStamped &msg)
+void MapGenerator::set_pos3(const geometry_msgs::msg::PoseWithCovarianceStamped &msg)
 {
   pos3.push_back(msg.pose.pose.position.x);
   pos3.push_back(msg.pose.pose.position.y);
@@ -276,12 +276,12 @@ void GraphGenerator::set_pos3(const geometry_msgs::msg::PoseWithCovarianceStampe
   pos3.push_back(y);
 }
 
-pose_t GraphGenerator::get_gate()
+pose_t MapGenerator::get_gate()
 {
   return gates.at(0);
 }
 
-boost::geometry::model::multi_polygon<polygon_t> GraphGenerator::get_map()
+boost::geometry::model::multi_polygon<polygon_t> MapGenerator::get_map()
 {
   if (!is_map_created)
   {

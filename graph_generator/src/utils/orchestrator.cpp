@@ -126,30 +126,6 @@ size_t Orchestrator::checkIntersection(const nav_msgs::msg::Path &path1, const n
   return -1; // No collision detected
 }
 
-double Orchestrator::compute_score(const nav_msgs::msg::Path &path, size_t collision_point)
-{
-  if (collision_point >= path.poses.size())
-  {
-    throw std::out_of_range("Collision point is out of bounds.");
-  }
-
-  // Compute the distance along the path from the collision point to the goal
-  double total_distance = 0.0;
-  for (size_t i = collision_point; i < path.poses.size() - 1; ++i)
-  {
-    const auto &current_pose = path.poses[i].pose.position;
-    const auto &next_pose = path.poses[i + 1].pose.position;
-
-    double dx = next_pose.x - current_pose.x;
-    double dy = next_pose.y - current_pose.y;
-    total_distance += std::sqrt(dx * dx + dy * dy);
-  }
-
-  // Compute the score; higher score for shorter distances
-  // Avoid division by zero if total_distance is very small
-  return (total_distance > 1e-6) ? (1.0 / total_distance) : std::numeric_limits<double>::infinity();
-}
-
 std::vector<KDNode_t> Orchestrator::reschedule_path(std::vector<KDNode_t> path, KDNode_t collision_point, double step_size)
 {
   std::vector<KDNode_t> new_path = path;
@@ -167,7 +143,7 @@ std::vector<KDNode_t> Orchestrator::reschedule_path(std::vector<KDNode_t> path, 
     // shift wrt the direction the mid point of a step size
     // KDNode_t new_point = {mid_point.at(0) - step_size * direction.at(0), mid_point.at(1) - step_size * direction.at(1)};
     KDNode_t new_point = {path.at(0).at(0) - step_size * direction.at(0), path.at(0).at(1) - step_size * direction.at(1)};
-    new_path.insert(new_path.begin() + 1, collision_point);
+    // new_path.insert(new_path.begin() + 1, collision_point);
     new_path.insert(new_path.begin() + 1, new_point);
   }
   // if the path has more point
@@ -185,7 +161,7 @@ std::vector<KDNode_t> Orchestrator::reschedule_path(std::vector<KDNode_t> path, 
     // KDNode_t new_point = {mid_point.at(0) + step_size * direction.at(0), mid_point.at(1) + step_size * direction.at(1)};
     KDNode_t new_point = {path.at(0).at(0) + step_size * direction.at(0), path.at(0).at(1) + step_size * direction.at(1)};
     // insert the new point as a first point
-    new_path.insert(new_path.begin() + 1, collision_point);
+    // new_path.insert(new_path.begin() + 1, collision_point);
     new_path.insert(new_path.begin() + 1, new_point);
   }
 

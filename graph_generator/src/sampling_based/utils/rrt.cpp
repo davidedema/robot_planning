@@ -1,9 +1,6 @@
 #include "graph_generator/sampling_based/utils/rrt.hpp"
 
-RRT::RRT()
-{
-  // initialize the tree
-}
+RRT::RRT() {}
 
 RRT::~RRT() {}
 
@@ -98,7 +95,6 @@ bool RRT::are_nodes_equal(const KDNode_t &a, const KDNode_t &b)
 bool RRT::add_edge(KDNode_t &new_node, KDNode_t &nearest_node, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
   //  add path between new_node and nearest_node
-  //! if the path and the points are inside the polygon
   if (valid_segment(new_node, nearest_node, map))
   {
     auto v_new = boost::add_vertex(g);
@@ -126,7 +122,10 @@ bool RRT::add_edge(KDNode_t &new_node, KDNode_t &nearest_node, boost::geometry::
 bool RRT::attach_node(KDNode_t &new_node, KDNode_t &nearest_node, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
   //  add path between new_node and nearest_node
-  //! if the path and the points are inside the polygon
+
+  std::cout << "new_node: " << new_node.at(0) << " " << new_node.at(1) << std::endl;
+  std::cout << "nearest_node: " << nearest_node.at(0) << " " << nearest_node.at(1) << std::endl;
+
   if (valid_segment(new_node, nearest_node, map))
   {
     auto v_new = boost::add_vertex(g);
@@ -179,7 +178,7 @@ bool RRT::valid_segment(KDNode_t &start, KDNode_t &end, boost::geometry::model::
   point_t start_point = point_t(start.at(0), start.at(1));
   point_t end_point = point_t(end.at(0), end.at(1));
   polygon_t segment;
-  this->create_inflated_polygon(start_point, end_point, 0.001, segment);
+  this->create_inflated_polygon(start_point, end_point, 0.01, segment);
   if (boost::geometry::within(segment, map))
   {
     return true;
@@ -237,7 +236,6 @@ KDNode_t RRT::get_nn(KDNode_t &sampled_point, int n_k)
   Kdtree::KdTree tree(&nodes);
   Kdtree::KdNodeVector result;
   tree.k_nearest_neighbors(sampled_point, n_k, &result);
-  // TODO: molto hardcoded questa parte
   KDNode_t ret{result[0].point[0], result[0].point[1]};
   return ret;
 }
@@ -372,14 +370,6 @@ std::vector<KDNode_t> RRT::smooth_path(std::vector<KDNode_t> &path, boost::geome
     {
       --i;
       point_b = path.at(i);
-
-      // try{
-      //   point_b = path.at(i);
-      // }
-      // catch(const std::out_of_range& e){
-      //   finish = true;
-      //   new_path = path;
-      // }
     }
   }
 

@@ -203,7 +203,7 @@ struct dubins_curve Dubins::dubins_shortest_path(double x0, double y0, double th
   std::vector<double> scaled_quantities = this->scale_to_standard(x0, y0, th0, xf, yf, thf, kmax);
   int pidx = -1;
   std::vector<double> best_dubins;
-  bool is_valid = true;
+  bool is_valid = false;
   double L = 999;
   double Lcur = 999;
   std::vector<int> ksign = {1, 0, 1, -1, 0, -1, 1, 0, -1, -1, 0, 1, -1, 1, -1, 1, -1, 1};
@@ -253,13 +253,13 @@ std::vector<struct dubins_curve> Dubins::dubins_multi_point(double x0, double y0
   std::vector<double> known_point = {xf, yf, thf};
 
   //? print the input
-  std::cout << "x0: " << x0 << " y0: " << y0 << " th0: " << th0 << "\n";
-  std::cout << "xf: " << xf << " yf: " << yf << " thf: " << thf << "\n";
-  std::cout << "Points: \n";
-  for (auto &p : points)
-  {
-    std::cout << "x: " << p.at(0) << " y: " << p.at(1) << "\n";
-  }
+  // std::cout << "x0: " << x0 << " y0: " << y0 << " th0: " << th0 << "\n";
+  // std::cout << "xf: " << xf << " yf: " << yf << " thf: " << thf << "\n";
+  // std::cout << "Points: \n";
+  // for (auto &p : points)
+  // {
+  //   std::cout << "x: " << p.at(0) << " y: " << p.at(1) << "\n";
+  // }
 
   for (auto it = points.rbegin(); it != points.rend(); ++it)
   {
@@ -276,6 +276,7 @@ std::vector<struct dubins_curve> Dubins::dubins_multi_point(double x0, double y0
       Lcur = aux_curve.L;
       if (Lcur < L)
       {
+        // std::cout << "maus" << std::endl;
         best_curve = aux_curve;
         L = Lcur;
       }
@@ -283,6 +284,11 @@ std::vector<struct dubins_curve> Dubins::dubins_multi_point(double x0, double y0
     known_point.at(0) = best_curve.a1.x0;
     known_point.at(1) = best_curve.a1.y0;
     known_point.at(2) = best_curve.a1.th0;
+
+    // // print known point
+    // std::cout << "x: " << known_point.at(0) << std::endl;
+    // std::cout << "y: " << known_point.at(1) << std::endl;
+    // std::cout << "th: " << known_point.at(2) << std::endl;  
 
     curves.insert(curves.begin(), best_curve);
   }
@@ -323,137 +329,71 @@ std::vector<KDNode_t> Dubins::segment_arc(const dubins_arc &arc, int segments)
 
 bool Dubins::valid_curve(struct dubins_curve curve, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
-  // if (curve.a1.L > 0)
-  // {
-  //   auto points = this->segment_arc(curve.a1, 2);
-  //   for (size_t i = 0; i < points.size() - 1; ++i)
-  //   {
-  //     auto &p1_0 = points[i];
-  //     auto &p1_1 = points[i + 1];
-
-  //     // std::cout << "Checking segment from (" << p1_0.at(0) << ", " << p1_0.at(1) << ") "
-  //               // << "to (" << p1_1.at(0) << ", " << p1_1.at(1) << ")\n";
-
-  //     if (!this->valid_segment(p1_0, p1_1, map))
-  //     {
-  //       // std::cout << "Segment is invalid!\n";
-  //       return false;
-  //     }
-
-  //     // std::cout << "Segment is valid.\n";
-  //     // std::cout << "----------------\n";
-  //   }
-  // }
-  // if (curve.a2.L > 0)
-  // {
-  //   auto points = this->segment_arc(curve.a2, 2);
-  //   for (size_t i = 0; i < points.size() - 1; ++i)
-  //   {
-  //     auto &p1_0 = points[i];
-  //     auto &p1_1 = points[i + 1];
-
-  //     // std::cout << "Checking segment from (" << p1_0.at(0) << ", " << p1_0.at(1) << ") "
-  //               // << "to (" << p1_1.at(0) << ", " << p1_1.at(1) << ")\n";
-
-  //     if (!this->valid_segment(p1_0, p1_1, map))
-  //     {
-  //       // std::cout << "Segment is invalid!\n";
-  //       return false;
-  //     }
-
-  //     // std::cout << "Segment is valid.\n";
-  //     // std::cout << "----------------\n";
-  //   }
-  // }
-  // if (curve.a3.L > 0)
-  // {
-  //   auto points = this->segment_arc(curve.a3, 2);
-  //   for (size_t i = 0; i < points.size() - 1; ++i)
-  //   {
-  //     auto &p1_0 = points[i];
-  //     auto &p1_1 = points[i + 1];
-
-  //     // std::cout << "Checking segment from (" << p1_0.at(0) << ", " << p1_0.at(1) << ") "
-  //               // << "to (" << p1_1.at(0) << ", " << p1_1.at(1) << ")\n";
-
-  //     if (!this->valid_segment(p1_0, p1_1, map))
-  //     {
-  //       // std::cout << "Segment is invalid!\n";
-  //       return false;
-  //     }
-
-  //     // std::cout << "Segment is valid.\n";
-  //     // std::cout << "----------------\n";
-  //   }
-  // }
-
-  // return true;
-  KDNode_t p1_0 = {curve.a1.x0, curve.a1.y0};
-  KDNode_t p1_f = {curve.a1.xf, curve.a1.yf};
-  KDNode_t p2_0 = {curve.a2.x0, curve.a2.y0};
-  KDNode_t p2_f = {curve.a2.xf, curve.a2.yf};
-  KDNode_t p3_0 = {curve.a3.x0, curve.a3.y0};
-  KDNode_t p3_f = {curve.a3.xf, curve.a3.yf};
-
-  if (this->valid_segment(p1_0, p1_f, map) && this->valid_segment(p2_0, p2_f, map) && this->valid_segment(p3_0, p3_f, map))
+  // transform the curve in a series of points and check if the point is inside the map or not
+  auto path = this->sample_dubins_curve(curve, 0.05);
+  for (auto &point : path)
   {
-    return true;
+    if (!boost::geometry::within(point, map))
+    {
+      return false;
+    }
   }
-  return false;
+  return true;
 }
 
-bool Dubins::valid_segment(KDNode_t &start, KDNode_t &end, boost::geometry::model::multi_polygon<polygon_t> &map)
+// Function to sample points along a single dubins arc
+std::vector<point_t> Dubins::sample_dubins_arc(const dubins_arc &arc, double step_size)
 {
-  // check if a segment with start and end points whole within the polygon map
-  // will approximate the segment with a polygon so the function within can be used
+  std::vector<point_t> points;
 
-  point_t start_point = point_t(start.at(0), start.at(1));
-  point_t end_point = point_t(end.at(0), end.at(1));
-  polygon_t segment;
-  this->create_inflated_polygon(start_point, end_point, 0.001, segment);
-  if (boost::geometry::within(segment, map))
+  // Number of steps along the arc
+  int num_steps = static_cast<int>(std::ceil(arc.L / step_size));
+  for (int i = 0; i <= num_steps; ++i)
   {
-    return true;
+    point_t p;
+    double s = i * step_size; // Distance along the arc
+    if (s > arc.L)
+      s = arc.L;
+
+    double x, y, theta;
+    if (arc.k == 0) // Straight line
+    {
+      x = arc.x0 + s * std::cos(arc.th0);
+      y = arc.y0 + s * std::sin(arc.th0);
+    }
+    else // Circular arc
+    {
+      double r = 1.0 / std::abs(arc.k); // Radius of the arc
+      double cx = arc.x0 - r * std::sin(arc.th0); // Center of the circle
+      double cy = arc.y0 + r * std::cos(arc.th0);
+
+      double delta_theta = s * arc.k; // Change in angle along the arc
+      theta = arc.th0 + delta_theta;
+      x = cx + r * std::sin(theta);
+      y = cy - r * std::cos(theta);
+    }
+
+    // Add the point to the list
+    p.set<0>(x);
+    p.set<1>(y);
+    points.push_back(p);
   }
-  return false;
+
+  return points;
 }
 
-void Dubins::create_inflated_polygon(
-    const point_t &p1,
-    const point_t &p2,
-    double epsilon,
-    polygon_t &polygon)
+std::vector<point_t> Dubins::sample_dubins_curve(const dubins_curve &curve, double step_size)
 {
-  // Extract coordinates
-  double x1 = boost::geometry::get<0>(p1);
-  double y1 = boost::geometry::get<1>(p1);
-  double x2 = boost::geometry::get<0>(p2);
-  double y2 = boost::geometry::get<1>(p2);
+  std::vector<point_t> points;
 
-  // Compute the direction vector (dx, dy)
-  double dx = x2 - x1;
-  double dy = y2 - y1;
+  // Sample each arc and concatenate the points
+  auto arc1_points = sample_dubins_arc(curve.a1, step_size);
+  auto arc2_points = sample_dubins_arc(curve.a2, step_size);
+  auto arc3_points = sample_dubins_arc(curve.a3, step_size);
 
-  // Normalize the direction vector
-  double length = std::sqrt(dx * dx + dy * dy);
-  dx /= length;
-  dy /= length;
+  points.insert(points.end(), arc1_points.begin(), arc1_points.end());
+  points.insert(points.end(), arc2_points.begin(), arc2_points.end());
+  points.insert(points.end(), arc3_points.begin(), arc3_points.end());
 
-  // Compute the perpendicular vector (px, py)
-  double px = -dy * epsilon; // Perpendicular and scaled by epsilon
-  double py = dx * epsilon;
-
-  // Compute the four corners of the rectangle
-  point_t corner1(x1 + px, y1 + py);
-  point_t corner2(x1 - px, y1 - py);
-  point_t corner3(x2 - px, y2 - py);
-  point_t corner4(x2 + px, y2 + py);
-
-  // Construct the polygon
-  polygon.outer().clear();
-  polygon.outer().push_back(corner1);
-  polygon.outer().push_back(corner2);
-  polygon.outer().push_back(corner3);
-  polygon.outer().push_back(corner4);
-  polygon.outer().push_back(corner1); // Close the polygon
+  return points;
 }

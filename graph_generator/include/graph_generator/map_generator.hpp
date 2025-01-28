@@ -32,12 +32,12 @@ static const rmw_qos_profile_t qos_profile_custom = {
     RMW_QOS_LIVELINESS_LEASE_DURATION_DEFAULT,
     false};
 
-class GraphGenerator : public rclcpp::Node
+class MapGenerator : public rclcpp::Node
 {
 public:
   // constructor and distructor
-  GraphGenerator();
-  ~GraphGenerator();
+  MapGenerator();
+  ~MapGenerator();
 
   // callbacks for the subscribers
   void callback_borders(const geometry_msgs::msg::Polygon::SharedPtr msg);
