@@ -66,13 +66,11 @@ int main(int argc, char **argv)
   auto pose_shellfino2 = m->get_pose3();
   auto pose_gate = m->get_gate();
   log_message(logger_class, log_level, "\033[1;32m Map info obtained\033[0m \n Building map");
-  
+
   auto inflated_obstacles = m->get_inflated_map();
   auto inflated_border = m->get_inflated_border();
   auto inflated_obstacles_unionized = m->get_unionized_inflated_map();
   log_message(logger_class, log_level, "\033[1;32m Inflated Maps Building map");
-
-
 
   point_t position_shellfino_1 = point_t({pose_shellfino1[0], pose_shellfino1[1]});
   point_t position_shellfino_2 = point_t({pose_shellfino2[0], pose_shellfino2[1]});
@@ -88,12 +86,30 @@ int main(int argc, char **argv)
   log_message(logger_class, log_level, "\033[1;32m Generating Graph \033[0m");
 
   auto cutted_map_poly = cutted_map(inflated_obstacles_unionized, cuts);
-  auto map_in_lines = map_to_lines(cutted_map_poly, inflated_border);
+  multi_polygon_t map_poly;
+  for (auto poly : cutted_map_poly)
+  {
+    map_poly.emplace_back(poly);
+  }
+  map_poly.emplace_back(inflated_border);
+
+
+
+  auto map_in_lines = map_to_lines(map_poly, inflated_border);
+
+  for (auto border_point : inflated_border.outer())
+  {
+    auto lines = find_point_map_links(inflated_obstacles_unionized, border_point);
+    map_in_lines.insert(map_in_lines.end(), lines.begin(), lines.end());
+  }
   auto shellfino1_to_map = find_shellfino_map_links(inflated_obstacles_unionized, position_shellfino_1, position_gate);
   auto shellfino2_to_map = find_shellfino_map_links(inflated_obstacles_unionized, position_shellfino_2, position_gate);
   auto gate_to_map = find_point_map_links(inflated_obstacles_unionized, position_gate);
 
-  std::vector<line_t> bitangents_lines = find_links(cutted_map_poly);
+
+
+  std::vector<line_t>
+      bitangents_lines = find_links(cutted_map_poly);
 
   log_message(logger_class, log_level, "\033[1;32m Number of edges", bitangents_lines.size(), "\033[0m");
 
@@ -107,7 +123,7 @@ int main(int argc, char **argv)
   // From optimal theoretical path -> physical movement---------------------------------------------------------------------------
 
   nav_msgs::msg::Path shelfino1_nav2, shelfino2_nav2;
-  genearateMovementPath(shelfino1_nav2, shelfino2_nav2, points_path1,points_path2, pose_shellfino1, pose_shellfino2, pose_gate, map);
+  genearateMovementPath(shelfino1_nav2, shelfino2_nav2, points_path1, points_path2, pose_shellfino1, pose_shellfino2, pose_gate, map);
 
   //-----------------------------------------------------------------------
   std::vector<line_t>
