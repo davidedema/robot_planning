@@ -156,7 +156,7 @@ std::vector<line_t> find_shellfino_map_links(const multi_polygon_t &multipolygon
         }
     }
 
-    {//direct link check
+    { // direct link check
         line_t line = line_t{goal_point, point};
 
         bg::model::multi_point<point_t> intersections;
@@ -165,10 +165,10 @@ std::vector<line_t> find_shellfino_map_links(const multi_polygon_t &multipolygon
         for (auto &other_poly : multipolygon)
         {
 
-                if (bg::intersects(line, other_poly))
-                {
-                    unwanted_intersection = true;
-                }
+            if (bg::intersects(line, other_poly))
+            {
+                unwanted_intersection = true;
+            }
         }
 
         if (!unwanted_intersection)
@@ -178,7 +178,8 @@ std::vector<line_t> find_shellfino_map_links(const multi_polygon_t &multipolygon
     return links;
 }
 
-std::vector<line_t> find_point_map_links(const multi_polygon_t &multipolygon, const point_t point){
+std::vector<line_t> find_point_map_links(const multi_polygon_t &multipolygon, const point_t point)
+{
     std::vector<line_t> links;
     std::vector<boost::geometry::model::ring<point_t, true, true, std::vector, std::allocator>, std::allocator<boost::geometry::model::ring<point_t, true, true, std::vector, std::allocator>>> rings;
     for (const auto &poly : multipolygon)
@@ -226,6 +227,65 @@ std::vector<line_t> find_point_map_links(const multi_polygon_t &multipolygon, co
         }
     }
 
+    return links;
+}
+
+// A separate function since it has to be used only when connecting to borders
+std::vector<line_t> find_border_point_map_links(const multi_polygon_t &multipolygon, const polygon_t &border_poly, const point_t point)
+{
+    using linestring = bg::model::linestring<point_t>;
+    linestring border_line;
+    bg::assign_points(border_line, border_poly.outer());
+
+    std::vector<line_t> links;
+    std::vector<boost::geometry::model::ring<point_t, true, true, std::vector, std::allocator>, std::allocator<boost::geometry::model::ring<point_t, true, true, std::vector, std::allocator>>> rings;
+    for (const auto &poly : multipolygon)
+    {
+        rings.emplace_back(poly.outer());
+    }
+    for (const auto &poly1 : multipolygon)
+    {
+        auto ring1 = poly1.outer();
+        if (!bg::is_valid(ring1))
+        {
+            std::cerr << "The ring is not valid!" << std::endl;
+        }
+
+        for (const auto point1 : ring1)
+        {
+            if (bg::intersects(point1, border_poly))
+            {
+
+                line_t line = line_t{point1, point};
+
+                bg::model::multi_point<point_t> intersections;
+                bool unwanted_intersection = false;
+
+                for (auto &other_poly : multipolygon)
+                {
+                    if (&poly1 != &other_poly)
+
+                        if (bg::intersects(line, other_poly))
+                        {
+                            unwanted_intersection = true;
+                        }
+                }
+
+                for (size_t i = 0; i < ring1.size() - 1 && !unwanted_intersection; ++i) // check if there is internal intersection
+                {
+                    line_t line_v = line_t{ring1[i], ring1[i + 1]};
+                    bool to_ignore1 = (bg::equals(ring1[i], point1) || bg::equals(ring1[i + 1], point1));
+                    if (!to_ignore1 && bg::intersects(line, line_v))
+                    {
+                        unwanted_intersection = true;
+                    }
+                }
+
+                if (!unwanted_intersection)
+                    links.emplace_back(line);
+            }
+        }
+    }
 
     return links;
 }
@@ -340,20 +400,53 @@ std::vector<line_t> get_cut_lines(multi_polygon_t clean, multi_polygon_t inflate
 
 std::vector<line_t> map_to_lines(const multi_polygon_t &multipolygon, const polygon_t border_polygon)
 {
+    using linestring = bg::model::linestring<point_t>;
+    linestring border_line;
+    bg::assign_points(border_line, border_polygon.outer());
+
     std::vector<line_t> lines;
     for (auto poly : multipolygon)
     {
-        auto ring = poly.outer();
-
-        for (size_t i = 1; i < ring.size() + 1; i++)
+        if (!bg::intersects(poly, border_line))
         {
-            int pa, pb; // point after, point before
-            pb = i - 1;
-            (i == ring.size()) ? pa = 0 : pa = i;
+            auto ring = poly.outer();
+            std::vector<point_t> intersection_points;
+            bg::intersection(poly, border_polygon, intersection_points);
 
-            lines.emplace_back(line_t({ring[pb], ring[pa]}));
+            for (size_t i = 1; i < ring.size() + 1; i++)
+            {
+                int pa, pb; // point after, point before
+                pb = i - 1;
+                (i == ring.size()) ? pa = 0 : pa = i;
+                line_t line = line_t({ring[pb], ring[pa]});
+                point_t midpoint(
+                    (bg::get<0>(ring[pb]) + bg::get<0>(ring[pa])) / 2.0, // Average x-coordinates
+                    (bg::get<1>(ring[pb]) + bg::get<1>(ring[pa])) / 2.0  // Average y-coordinates
+                );
+                // if is the line id
+                if (!(bg::intersects(ring[pb], border_line) || bg::intersects(ring[pa], border_line)))
+                    lines.emplace_back(line);
+            }
         }
     }
+
+    auto ring = border_polygon.outer();
+    for (size_t i = 0; i < ring.size(); i++)
+    {
+        int pa, pb; // point after, point before
+        pb = i - 1;
+        (i == ring.size()) ? pa = 0 : pa = i;
+
+        line_t line = line_t({ring[pb], ring[pa]});
+        lines.emplace_back(line);
+    }
+
+    for (auto border_point : border_polygon.outer())
+    {
+        auto border_lines = find_border_point_map_links(multipolygon, border_polygon, border_point);
+        lines.insert(lines.end(), border_lines.begin(), border_lines.end());
+    }
+
     return lines;
 }
 
@@ -413,4 +506,19 @@ multi_polygon_t cutted_map(const multi_polygon_t &multipolygon, const std::vecto
         cutted_map.emplace_back(new_poly);
     }
     return cutted_map;
+}
+
+void map_edge_difference(multi_polygon_t &obstacles, polygon_t &edge)
+{
+    for (auto poly : obstacles)
+    {
+        if (bg::intersects(edge, poly))
+        {
+            multi_polygon_t output;
+            bg::difference(edge, poly, output);
+            std::sort(output.begin(), output.end(), [](const polygon_t &a, const polygon_t &b)
+                      { return bg::area(a) > bg::area(b); });
+            edge = output[0];
+        }
+    }
 }

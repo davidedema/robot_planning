@@ -10,3 +10,5 @@ std::vector<line_t> find_point_map_links(const multi_polygon_t &multipolygon, co
 
 std::vector<line_t> map_to_lines(const multi_polygon_t &multipolygon, const polygon_t border);
 multi_polygon_t cutted_map(const multi_polygon_t &multipolygon, const std::vector<line_t> cut_lines);
+void map_edge_difference(multi_polygon_t &obstacles, polygon_t &edge);
+std::vector<line_t> find_border_point_map_links(const multi_polygon_t &multipolygon, const polygon_t &border_poly, const point_t point);

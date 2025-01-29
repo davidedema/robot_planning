@@ -70,6 +70,7 @@ int main(int argc, char **argv)
   auto inflated_obstacles = m->get_inflated_map();
   auto inflated_border = m->get_inflated_border();
   auto inflated_obstacles_unionized = m->get_unionized_inflated_map();
+  map_edge_difference(inflated_obstacles_unionized, inflated_border);
   log_message(logger_class, log_level, "\033[1;32m Inflated Maps Building map");
 
   point_t position_shellfino_1 = point_t({pose_shellfino1[0], pose_shellfino1[1]});
@@ -91,17 +92,14 @@ int main(int argc, char **argv)
   {
     map_poly.emplace_back(poly);
   }
-  map_poly.emplace_back(inflated_border);
+  //map_poly.emplace_back(inflated_border);
 
 
 
   auto map_in_lines = map_to_lines(map_poly, inflated_border);
 
-  for (auto border_point : inflated_border.outer())
-  {
-    auto lines = find_point_map_links(inflated_obstacles_unionized, border_point);
-    map_in_lines.insert(map_in_lines.end(), lines.begin(), lines.end());
-  }
+
+
   auto shellfino1_to_map = find_shellfino_map_links(inflated_obstacles_unionized, position_shellfino_1, position_gate);
   auto shellfino2_to_map = find_shellfino_map_links(inflated_obstacles_unionized, position_shellfino_2, position_gate);
   auto gate_to_map = find_point_map_links(inflated_obstacles_unionized, position_gate);
@@ -143,9 +141,13 @@ int main(int argc, char **argv)
   dubins_publisher->send_nav2(shelfino1_nav2, shelfino2_nav2);
 
   auto inflated_unionized_publisher = std::make_shared<MapEdgePublisherNode>(inflated_obstacles_unionized, "inflated_unionized_map_edges");
+  multi_polygon_t pollo;
+  pollo.emplace_back(inflated_border);
   auto inflated_publisher = std::make_shared<MapEdgePublisherNode>(inflated_obstacles, "inflated_map_edges");
   auto clean_publisher = std::make_shared<MapEdgePublisherNode>(clean_map, "clean_map_edges");
   auto cutted_map_publisher = std::make_shared<MapEdgePublisherNode>(cutted_map_poly, "cutted_map_edges");
+  auto inflated_border_publisher = std::make_shared<MapEdgePublisherNode>(pollo, "inflated_border");
+
   auto graph_publisher = std::make_shared<SimpleEdgePublisherNode>(bitangents_lines, "bitangent_graph");
   auto map_in_lines_publisher = std::make_shared<SimpleEdgePublisherNode>(map_in_lines, "map_in_lines_graph");
   auto point_to_map_publisher = std::make_shared<SimpleEdgePublisherNode>(shellfino1_to_map, "point_to_map_edges");
@@ -158,6 +160,7 @@ int main(int argc, char **argv)
   while (true)
   {
     rclcpp::spin_some(dubins_publisher);
+    rclcpp::spin_some(inflated_border_publisher);
 
     rclcpp::spin_some(clean_publisher);
     rclcpp::spin_some(inflated_unionized_publisher);
