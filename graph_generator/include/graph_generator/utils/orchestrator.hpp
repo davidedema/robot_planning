@@ -34,5 +34,5 @@ public:
   double get_total_cost(KDNode_t &node);
   double get_distance(KDNode_t &current, KDNode_t &child);
   size_t checkIntersection(const nav_msgs::msg::Path &path1, const nav_msgs::msg::Path &path2);
-  std::vector<KDNode_t> reschedule_path(std::vector<KDNode_t> path, KDNode_t start_point, double step_size, boost::geometry::model::multi_polygon<polygon_t> &map);
+  std::vector<KDNode_t> reschedule_path(std::vector<KDNode_t> path, KDNode_t start_point, boost::geometry::model::multi_polygon<polygon_t> &map);
 };

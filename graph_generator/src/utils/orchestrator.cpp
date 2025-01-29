@@ -1,5 +1,12 @@
 #include "graph_generator/utils/orchestrator.hpp"
 
+
+/**
+ * @brief Construct a new Orchestrator::Orchestrator object
+ * 
+ * @param g graph
+ * @param gl lookup table for the graph
+ */
 Orchestrator::Orchestrator(Graph g, std::map<KDNode_t, vertex_t> gl)
 {
   this->g = g;
@@ -9,16 +16,36 @@ Orchestrator::Orchestrator(Graph g, std::map<KDNode_t, vertex_t> gl)
 
 Orchestrator::~Orchestrator() {}
 
+/**
+ * @brief Get the total cost of a node
+ * 
+ * @param node node to get the cost
+ * @return double cost of the node
+ */
 double Orchestrator::get_total_cost(KDNode_t &node)
 {
   return cost_lookup[node] + g[graph_lookup[node]].l2_dist_h;
 }
 
+/**
+ * @brief Get the distance between two nodes
+ * 
+ * @param current current node
+ * @param child child node
+ * @return double distance between the two nodes
+ */
 double Orchestrator::get_distance(KDNode_t &current, KDNode_t &child)
 {
   return sqrt(pow(current.at(0) - child.at(0), 2) + pow(current.at(1) - child.at(1), 2));
 }
 
+/**
+ * @brief A* search algorithm
+ * 
+ * @param start start node
+ * @param goal goal node
+ * @return plan_t path from start to goal
+ */
 plan_t Orchestrator::astar_search(KDNode_t &start, KDNode_t &goal)
 {
   plan_t plan;
@@ -100,6 +127,13 @@ plan_t Orchestrator::astar_search(KDNode_t &start, KDNode_t &goal)
   return plan; // Empty plan
 }
 
+/**
+ * @brief Check for intersection between two paths
+ * 
+ * @param path1 first path
+ * @param path2 second path
+ * @return size_t index of the intersection point (if -1 no intersection found)
+ */
 size_t Orchestrator::checkIntersection(const nav_msgs::msg::Path &path1, const nav_msgs::msg::Path &path2)
 {
   // Get the sizes of the paths
@@ -123,11 +157,20 @@ size_t Orchestrator::checkIntersection(const nav_msgs::msg::Path &path1, const n
     }
   }
 
-  // Return a special value to indicate no collision
   return -1; // No collision detected
 }
 
-std::vector<KDNode_t> Orchestrator::reschedule_path(std::vector<KDNode_t> path, KDNode_t start_point, double step_size, boost::geometry::model::multi_polygon<polygon_t> &map)
+/**
+ * @brief Reschedule a path by adding a new point near the start point
+ * 
+ * @param path path to reschedule
+ * @param start_point start point
+ * @param step_size step size
+ * @param map map
+ * 
+ * @return std::vector<KDNode_t> rescheduled path
+ */
+std::vector<KDNode_t> Orchestrator::reschedule_path(std::vector<KDNode_t> path, KDNode_t start_point, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
   std::vector<KDNode_t> new_path = path;
   // sample U [0, 1]
