@@ -69,5 +69,4 @@ public:
 
   std::vector<point_t> sample_dubins_arc(const dubins_arc &arc, double step_size);
   std::vector<point_t> sample_dubins_curve(const dubins_curve &curve, double step_size);
-  std::vector<KDNode_t> segment_arc(const dubins_arc& arc, int segments);
 };

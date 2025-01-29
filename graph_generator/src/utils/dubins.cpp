@@ -1,5 +1,9 @@
 #include "graph_generator/utils/dubins.hpp"
 
+/**
+ * @brief Construct a new Dubins:: Dubins object
+ * 
+ */
 Dubins::Dubins()
 {
   function_vector = {
@@ -13,6 +17,13 @@ Dubins::Dubins()
 
 Dubins::~Dubins() {}
 
+/**
+ * @brief modulos operation for angles
+ * 
+ * @param angle angle to mod
+ * 
+ * @return double modulos angle
+ */
 double Dubins::mod2pi(double angle)
 {
   double result = std::fmod(angle, 2 * M_PI);
@@ -23,6 +34,9 @@ double Dubins::mod2pi(double angle)
   return result;
 }
 
+/**
+ * @brief scale the input to the standard dubins problem
+ */
 std::vector<double> Dubins::scale_to_standard(double x0, double y0, double th0, double xf, double yf, double thf, double kmax)
 {
   double dx = xf - x0;
@@ -38,6 +52,9 @@ std::vector<double> Dubins::scale_to_standard(double x0, double y0, double th0, 
   return result;
 }
 
+/**
+ * @brief scale the output from the standard dubins problem
+ */
 std::vector<double> Dubins::scale_from_standard(double lam, double sc_s1, double sc_s2, double sc_s3)
 {
   std::vector<double> result;
@@ -47,6 +64,9 @@ std::vector<double> Dubins::scale_from_standard(double lam, double sc_s1, double
   return result;
 }
 
+/**
+ * @brief sinc function
+ */
 double Dubins::sinc(double x)
 {
   if (abs(x) < 0.002)
@@ -58,6 +78,8 @@ double Dubins::sinc(double x)
     return sin(x) / x;
   }
 }
+
+// DUBINS PRIMITIVES 
 
 std::vector<double> Dubins::d_lsl(double sc_th0, double sc_thf, double sc_kmax)
 {
@@ -168,6 +190,10 @@ std::vector<double> Dubins::call_function(int index, double sc_th0, double sc_th
   return (this->*function_vector[index])(sc_th0, sc_thf, sc_kmax);
 }
 
+
+/**
+ * @brief build a dubins curve from the scaled quantities
+ */
 struct dubins_curve Dubins::build_dubins(double x0, double y0, double th0, double s1, double s2, double s3, double k1, double k2, double k3)
 {
   struct dubins_arc a1 = this->build_dubins_arc(x0, y0, th0, k1, s1);
@@ -179,6 +205,9 @@ struct dubins_curve Dubins::build_dubins(double x0, double y0, double th0, doubl
   return result;
 }
 
+/**
+ * @brief builds a dubins arc
+ */
 struct dubins_arc Dubins::build_dubins_arc(double x0, double y0, double th0, double k, double L)
 {
   std::vector<double> end = this->circline(L, x0, y0, th0, k);
@@ -198,6 +227,9 @@ std::vector<double> Dubins::circline(double L, double x0, double y0, double th0,
   return {x, y, th};
 }
 
+/**
+ * @brief found the shortest dubins path between two points
+ */
 struct dubins_curve Dubins::dubins_shortest_path(double x0, double y0, double th0, double xf, double yf, double thf, double kmax, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
   std::vector<double> scaled_quantities = this->scale_to_standard(x0, y0, th0, xf, yf, thf, kmax);
@@ -247,6 +279,9 @@ struct dubins_curve Dubins::dubins_shortest_path(double x0, double y0, double th
   return result;
 }
 
+/**
+ * @brief found the shortest multipoint dubins path 
+ */
 std::vector<struct dubins_curve> Dubins::dubins_multi_point(double x0, double y0, double th0, double xf, double yf, double thf, std::vector<std::vector<double>> points, double kmax, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
   std::vector<struct dubins_curve> curves;
@@ -286,34 +321,9 @@ std::vector<struct dubins_curve> Dubins::dubins_multi_point(double x0, double y0
   return curves;
 }
 
-std::vector<KDNode_t> Dubins::segment_arc(const dubins_arc &arc, int segments)
-{
-  std::vector<KDNode_t> points;   // Vector to store the points
-  double step = arc.L / segments; // Segment length
-
-  for (int i = 0; i <= segments; ++i)
-  {
-    double s = i * step; // Distance along the arc
-    KDNode_t p(2);       // Assume KDNode_t is a 2D point like std::vector<double>(2)
-
-    if (std::abs(arc.k) < 1e-6)
-    {                                        // Straight line
-      p[0] = arc.x0 + s * std::cos(arc.th0); // x-coordinate
-      p[1] = arc.y0 + s * std::sin(arc.th0); // y-coordinate
-    }
-    else
-    {                                                                          // Circular arc
-      double R = 1.0 / arc.k;                                                  // Radius of curvature
-      p[0] = arc.x0 + R * (std::sin(arc.th0 + arc.k * s) - std::sin(arc.th0)); // x-coordinate
-      p[1] = arc.y0 - R * (std::cos(arc.th0 + arc.k * s) - std::cos(arc.th0)); // y-coordinate
-    }
-
-    points.push_back(p); // Add the point to the vector
-  }
-
-  return points;
-}
-
+/**
+ * @brief check if a curve is valid
+ */
 bool Dubins::valid_curve(struct dubins_curve curve, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
   // transform the curve in a series of points and check if the point is inside the map or not
@@ -328,7 +338,9 @@ bool Dubins::valid_curve(struct dubins_curve curve, boost::geometry::model::mult
   return true;
 }
 
-// Function to sample points along a single dubins arc
+/**
+ * @brief sample points along a dubins arc
+ */
 std::vector<point_t> Dubins::sample_dubins_arc(const dubins_arc &arc, double step_size)
 {
   std::vector<point_t> points;
@@ -369,6 +381,9 @@ std::vector<point_t> Dubins::sample_dubins_arc(const dubins_arc &arc, double ste
   return points;
 }
 
+/**
+ * @brief sample points along a dubins curve
+ */
 std::vector<point_t> Dubins::sample_dubins_curve(const dubins_curve &curve, double step_size)
 {
   std::vector<point_t> points;
