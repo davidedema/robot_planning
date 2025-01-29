@@ -123,9 +123,6 @@ bool RRT::attach_node(KDNode_t &new_node, KDNode_t &nearest_node, boost::geometr
 {
   //  add path between new_node and nearest_node
 
-  std::cout << "new_node: " << new_node.at(0) << " " << new_node.at(1) << std::endl;
-  std::cout << "nearest_node: " << nearest_node.at(0) << " " << nearest_node.at(1) << std::endl;
-
   if (valid_segment(new_node, nearest_node, map))
   {
     auto v_new = boost::add_vertex(g);
@@ -370,6 +367,10 @@ std::vector<KDNode_t> RRT::smooth_path(std::vector<KDNode_t> &path, boost::geome
     {
       --i;
       point_b = path.at(i);
+    }
+    if (i == 0)
+    {
+      finish = true;
     }
   }
 

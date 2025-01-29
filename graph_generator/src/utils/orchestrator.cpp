@@ -4,6 +4,7 @@ Orchestrator::Orchestrator(Graph g, std::map<KDNode_t, vertex_t> gl)
 {
   this->g = g;
   this->graph_lookup = gl;
+  std::srand(static_cast<unsigned int>(std::time(nullptr)));
 }
 
 Orchestrator::~Orchestrator() {}
@@ -126,44 +127,35 @@ size_t Orchestrator::checkIntersection(const nav_msgs::msg::Path &path1, const n
   return -1; // No collision detected
 }
 
-std::vector<KDNode_t> Orchestrator::reschedule_path(std::vector<KDNode_t> path, KDNode_t collision_point, double step_size)
+std::vector<KDNode_t> Orchestrator::reschedule_path(std::vector<KDNode_t> path, KDNode_t start_point, double step_size, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
   std::vector<KDNode_t> new_path = path;
-  // if the path is point to point
-  if (path.size() == 2)
+  // sample U [0, 1]
+  bool valid = false;
+  double x = 0.0;
+  double y = 0.0;
+  do
   {
-    // take the mid point between collision and start
-    KDNode_t mid_point = {(path.at(0).at(0) + collision_point.at(0)) / 2, (path.at(0).at(1) + collision_point.at(1)) / 2};
-    // find the direction orthogonal to the goal
-    KDNode_t direction = {path.at(0).at(1) - collision_point.at(1), collision_point.at(0) - path.at(0).at(0)};
-    // normalize the direction
-    double norm = sqrt(pow(direction.at(0), 2) + pow(direction.at(1), 2));
-    direction.at(0) /= norm;
-    direction.at(1) /= norm;
-    // shift wrt the direction the mid point of a step size
-    // KDNode_t new_point = {mid_point.at(0) - step_size * direction.at(0), mid_point.at(1) - step_size * direction.at(1)};
-    KDNode_t new_point = {path.at(0).at(0) - step_size * direction.at(0), path.at(0).at(1) - step_size * direction.at(1)};
-    // new_path.insert(new_path.begin() + 1, collision_point);
-    new_path.insert(new_path.begin() + 1, new_point);
-  }
-  // if the path has more point
-  else
-  {
-    // take mid point from start and first point in path
-    KDNode_t mid_point = {(path.at(0).at(0) + path.at(1).at(0)) / 2, (path.at(0).at(1) + path.at(1).at(1)) / 2};
-    // find the direction orthogonal to the goal
-    KDNode_t direction = {path.at(0).at(1) - path.at(1).at(1), path.at(1).at(0) - path.at(0).at(0)};
-    // normalize the direction
-    double norm = sqrt(pow(direction.at(0), 2) + pow(direction.at(1), 2));
-    direction.at(0) /= norm;
-    direction.at(1) /= norm;
-    // shift wrt the direction the mid point of a step size
-    // KDNode_t new_point = {mid_point.at(0) + step_size * direction.at(0), mid_point.at(1) + step_size * direction.at(1)};
-    KDNode_t new_point = {path.at(0).at(0) + step_size * direction.at(0), path.at(0).at(1) + step_size * direction.at(1)};
-    // insert the new point as a first point
-    // new_path.insert(new_path.begin() + 1, collision_point);
-    new_path.insert(new_path.begin() + 1, new_point);
-  }
+    float U = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+    // sample theta random [0, 2pi)
+    float theta = static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / (2 * M_PI)));
+    double rho = 0.5 * sqrt(U);
+
+    // find new x and y
+    x = start_point.at(0) + rho * cos(theta);
+    y = start_point.at(1) + rho * sin(theta);
+
+    // check if the new point is valid
+    if (boost::geometry::within(point_t(x, y), map))
+    {
+      valid = true;
+    }
+  } while (!valid);
+
+  std::cout << "New point: " << start_point.at(0) << ", " << start_point.at(1) << std::endl;  
+
+  // insert the new point as a first point
+  new_path.insert(new_path.begin() + 1, {x, y});
 
   return new_path;
 }

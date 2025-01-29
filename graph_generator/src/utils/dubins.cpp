@@ -252,15 +252,6 @@ std::vector<struct dubins_curve> Dubins::dubins_multi_point(double x0, double y0
   std::vector<struct dubins_curve> curves;
   std::vector<double> known_point = {xf, yf, thf};
 
-  //? print the input
-  // std::cout << "x0: " << x0 << " y0: " << y0 << " th0: " << th0 << "\n";
-  // std::cout << "xf: " << xf << " yf: " << yf << " thf: " << thf << "\n";
-  // std::cout << "Points: \n";
-  // for (auto &p : points)
-  // {
-  //   std::cout << "x: " << p.at(0) << " y: " << p.at(1) << "\n";
-  // }
-
   for (auto it = points.rbegin(); it != points.rend(); ++it)
   {
     const auto &p = *it;
@@ -285,10 +276,6 @@ std::vector<struct dubins_curve> Dubins::dubins_multi_point(double x0, double y0
     known_point.at(1) = best_curve.a1.y0;
     known_point.at(2) = best_curve.a1.th0;
 
-    // // print known point
-    // std::cout << "x: " << known_point.at(0) << std::endl;
-    // std::cout << "y: " << known_point.at(1) << std::endl;
-    // std::cout << "th: " << known_point.at(2) << std::endl;  
 
     curves.insert(curves.begin(), best_curve);
   }
