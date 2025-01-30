@@ -8,7 +8,7 @@
 #include <vector>
 #include <boost/geometry.hpp>
 #include <boost/geometry/geometries/polygon.hpp>
-#include "graph_generator/graph_node.hpp"
+#include "graph_generator/map_generator.hpp"
 #include "graph_generator/utils/orchestrator.hpp"
 
 #include "clipper.hpp"

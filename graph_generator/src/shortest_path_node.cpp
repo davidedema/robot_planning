@@ -7,6 +7,57 @@
 #include "graph_generator/combinatorial_based/path_utilities.hpp"
 #include "graph_generator/combinatorial_based/shortest_graph.hpp"
 
+std::vector<KDNode_t> reschedule_path(std::vector<KDNode_t> path, KDNode_t start_point, boost::geometry::model::multi_polygon<polygon_t> &map)
+{
+  std::vector<KDNode_t> new_path = path;
+  // sample U [0, 1]
+  bool valid = false;
+  double x = 0.0;
+  double y = 0.0;
+  do
+  {
+    float U = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+    // sample theta random [0, 2pi)
+    float theta = static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / (2 * M_PI)));
+    double rho = 0.5 * sqrt(U);
+
+    // find new x and y
+    x = start_point.at(0) + rho * cos(theta);
+    y = start_point.at(1) + rho * sin(theta);
+
+    // check if the new point is valid
+    if (boost::geometry::within(point_t(x, y), map))
+    {
+      valid = true;
+    }
+  } while (!valid);
+
+  std::cout << "New point: " << start_point.at(0) << ", " << start_point.at(1) << std::endl;
+
+  // insert the new point as a first point
+  new_path.insert(new_path.begin() + 1, {x, y});
+
+  return new_path;
+}
+
+// Function to calculate distance from a point to all obstacles
+auto calculate_distance = [](const pose_t &shelfino_pos, const std::vector<polygon_t> &obstacles) -> double
+{
+  double min_distance = std::numeric_limits<double>::max();
+  for (const auto &obstacle : obstacles)
+  {
+    for (const auto &pt : obstacle.outer())
+    {
+      double dist = boost::geometry::distance(point_t(shelfino_pos[0], shelfino_pos[1]), pt);
+      if (dist < min_distance)
+      {
+        min_distance = dist;
+      }
+    }
+  }
+  return min_distance;
+};
+
 template <typename... Args>
 void log_message(rclcpp::Logger logger, rclcpp::Logger::Level level, Args &&...args)
 {
@@ -44,7 +95,7 @@ int main(int argc, char **argv)
 
   auto logger_class = m->get_logger();
   // Map for nav2---------------------------------------------------
-  auto mappa = std::make_shared<GraphGenerator>();
+  auto mappa = std::make_shared<MapGenerator>();
   log_message(logger_class, log_level, "Waiting for obstacles Map for nav2...");
 
   while (!mappa->obstacles_r_ || !mappa->borders_r_ || !mappa->gates_r_ || !mappa->pos1_r_ || !mappa->pos2_r_)
@@ -123,7 +174,115 @@ int main(int argc, char **argv)
   // From optimal theoretical path -> physical movement---------------------------------------------------------------------------
 
   nav_msgs::msg::Path shelfino1_nav2, shelfino2_nav2;
-  genearateMovementPath(shelfino1_nav2, shelfino2_nav2, points_path1, points_path2, pose_shellfino1, pose_shellfino2, pose_gate, map);
+  auto obstacles = m->get_obstacles();
+  //  genearateMovementPath(shelfino1_nav2, shelfino2_nav2, points_path1, points_path2, pose_shellfino1, pose_shellfino2, pose_gate, map);
+
+  auto converted_path1 = convert_points(points_path1);
+  auto converted_path2 = convert_points(points_path2);
+
+  std::reverse(converted_path1.begin(), converted_path1.end());
+  converted_path1.erase(converted_path1.begin());
+  converted_path1.erase(converted_path1.end());
+
+  std::reverse(converted_path2.begin(), converted_path2.end());
+  converted_path2.erase(converted_path2.begin());
+  converted_path2.erase(converted_path2.end());
+
+  Dubins d;
+
+  auto dubins_path_1 = d.dubins_multi_point(pose_shellfino1.at(0), pose_shellfino1.at(1), pose_shellfino1.at(2), pose_gate.at(0), pose_gate.at(1), pose_gate.at(2), converted_path1, 2, map);
+  auto dubins_path_2 = d.dubins_multi_point(pose_shellfino2.at(0), pose_shellfino2.at(1), pose_shellfino2.at(2), pose_gate.at(0), pose_gate.at(1), pose_gate.at(2), converted_path2, 2, map);
+
+  // Check collisions between the two paths
+  RCLCPP_INFO(m->get_logger(), "\033[1;32m Collision checking \033[0m");
+
+  bool solved_collision = false;
+
+  // Calculate distances
+  double shelfino1_distance = calculate_distance(pose_shellfino1, obstacles);
+  double shelfino2_distance = calculate_distance(pose_shellfino2, obstacles);
+
+  // Scoring logic
+  double shelfino1_score = shelfino1_distance > 1.0 ? shelfino1_distance * 10 : 0; // Example scoring rule
+  double shelfino2_score = shelfino2_distance > 1.0 ? shelfino2_distance * 10 : 0;
+  std::vector<KDNode_t> shelfino1_path = convert_points(points_path1);
+  std::vector<KDNode_t> shelfino2_path = convert_points(points_path2);
+  Dubins d;
+  std::vector<dubins_curve> shelfino1_d_path;
+
+  while (!solved_collision)
+  {
+    int collision_index = checkIntersection(shelfino1_nav2, shelfino2_nav2);
+    if (collision_index != -1)
+    {
+      RCLCPP_INFO(m->get_logger(), "\033[1;33m Found a collision \033[0m");
+      // get the collision point as a KDNode_t
+      KDNode_t collision_point = {shelfino1_nav2.poses.at(collision_index).pose.position.x, shelfino1_nav2.poses.at(collision_index).pose.position.y};
+
+      // who has the largest score has to deviate the path
+      if (shelfino1_score < shelfino2_score)
+      {
+        shelfino1_path = reschedule_path(shelfino1_path, {bg::get<0>(position_shellfino_1), bg::get<1>(position_shellfino_1)}, map);
+        shelfino1_path.erase(shelfino1_path.begin());
+        shelfino1_path.erase(shelfino1_path.end());
+        try
+        {
+          shelfino1_d_path = d.dubins_multi_point(bg::get<0>(position_shellfino_1), bg::get<1>(position_shellfino_1), m->get_pose1().at(2), bg::get<0>(position_gate), bg::get<0>(position_gate), m->get_gate().at(2), shelfino1_path, 2, map);
+        }
+        catch (const std::exception &e)
+        {
+          RCLCPP_ERROR(m->get_logger(), "Error in Dubins");
+          continue;
+        }
+        shelfino1_nav2 = convertDubinsPathToNavPath(shelfino1_d_path);
+        shelfino1_path.push_back({pose_gate.at(0), pose_gate.at(1)});
+        shelfino1_path.insert(shelfino1_path.begin(), {bg::get<0>(position_shellfino_1), bg::get<1>(position_shellfino_1)});
+      }
+      else
+      {
+        // reschedule for shelfino 2
+        shelfino2_path = reschedule_path(shelfino2_path, pose_shelfino2, map);
+        shelfino2_path.erase(shelfino2_path.begin());
+        shelfino2_path.erase(shelfino2_path.end());
+        try
+        {
+          shelfino2_d_path = d.dubins_multi_point(start_shelfino2.at(0), start_shelfino2.at(1), m->get_pose2().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino2_path, kmax, map);
+        }
+        catch (const std::exception &e)
+        {
+          RCLCPP_ERROR(m->get_logger(), "Error in Dubins");
+          continue;
+        }
+        shelfino2_nav2 = convertDubinsPathToNavPath(shelfino2_d_path);
+        shelfino2_path.push_back({goal.at(0), goal.at(1)});
+        shelfino2_path.insert(shelfino2_path.begin(), {start_shelfino2.at(0), start_shelfino2.at(1)});
+      }
+    }
+    else
+    {
+      solved_collision = true;
+      RCLCPP_INFO(m->get_logger(), "\033[1;32m No collisions \033[0m");
+    }
+  }
+
+  RCLCPP_INFO(m->get_logger(), "Time taken by function: %ld seconds", duration.count());
+
+  RCLCPP_INFO(m->get_logger(), "\033[1;32m Sending paths to nav2 controller \033[0m");
+
+  if (shelfino2_nav2.poses.size() == 0)
+  {
+    throw std::runtime_error("Empty path 2");
+    return -1;
+  }
+  if (shelfino1_nav2.poses.size() == 0)
+  {
+    throw std::runtime_error("Empty path 1");
+    return -1;
+  }
+  node->send_nav2(shelfino1_nav2, shelfino2_nav2);
+
+
+
 
   //-----------------------------------------------------------------------
   std::vector<line_t>

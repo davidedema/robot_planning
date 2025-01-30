@@ -156,66 +156,21 @@ std::vector<KDNode_t> reschedule_path(std::vector<KDNode_t> path, KDNode_t colli
 
     return new_path;
 }
-
-void genearateMovementPath(nav_msgs::msg::Path &shelfino1_nav2, nav_msgs::msg::Path &shelfino2_nav2, std::vector<point_t> points_path1, std::vector<point_t> points_path2, pose_t pose_shellfino1, pose_t pose_shellfino2, pose_t pose_gate, multi_polygon_t map)
+// Function to calculate distance from a point to all obstacles
+auto calculate_distance(const pose_t &shelfino_pos, const std::vector<polygon_t> &obstacles) -> double
 {
-
-    auto converted_path1 = convert_points(points_path1);
-    auto converted_path2 = convert_points(points_path2);
-
-
-    std::reverse(converted_path1.begin(), converted_path1.end());
-    converted_path1.erase(converted_path1.begin());
-    converted_path1.erase(converted_path1.end());
-
-    std::reverse(converted_path2.begin(), converted_path2.end());
-    converted_path2.erase(converted_path2.begin());
-    converted_path2.erase(converted_path2.end());
-
-
-    Dubins d;
-
-    auto dubins_path_1 = d.dubins_multi_point(pose_shellfino1.at(0), pose_shellfino1.at(1), pose_shellfino1.at(2), pose_gate.at(0), pose_gate.at(1), pose_gate.at(2), converted_path1, 2, map);
-    auto dubins_path_2 = d.dubins_multi_point(pose_shellfino2.at(0), pose_shellfino2.at(1), pose_shellfino2.at(2), pose_gate.at(0), pose_gate.at(1), pose_gate.at(2), converted_path2, 2, map);
-
-    shelfino1_nav2 = convertDubinsPathToNavPath(dubins_path_1);
-    shelfino2_nav2 = convertDubinsPathToNavPath(dubins_path_2);
-    // Collision checking-----------------------------------------------------------------------
-    converted_path1.push_back({pose_gate.at(0), pose_gate.at(1)});
-    converted_path1.insert(converted_path1.begin(), {pose_shellfino1.at(0), pose_shellfino1.at(1)});
-    converted_path2.push_back({pose_gate.at(0), pose_gate.at(1)});
-    converted_path2.insert(converted_path2.begin(), {pose_shellfino2.at(0), pose_shellfino2.at(1)});
-
-    int collision_index = checkIntersection(shelfino1_nav2, shelfino2_nav2);
-    if (collision_index != -1)
+    double min_distance = std::numeric_limits<double>::max();
+    for (const auto &obstacle : obstacles)
     {
-        // get the collision point as a KDNode_t
-        KDNode_t collision_point = {shelfino1_nav2.poses.at(collision_index).pose.position.x, shelfino1_nav2.poses.at(collision_index).pose.position.y};
-        double score1 = compute_score(shelfino1_nav2, collision_index);
-        double score2 = compute_score(shelfino2_nav2, collision_index);
-        // print scores
-
-        // who has the largest score has to deviate the path
-        if (score1 > score2)
+        for (const auto &pt : obstacle.outer())
         {
-            converted_path1 = reschedule_path(converted_path1, collision_point, 0.5);
-            converted_path1.erase(converted_path1.begin());
-            converted_path1.erase(converted_path1.end());
-            dubins_path_1 = d.dubins_multi_point(pose_shellfino1.at(0), pose_shellfino1.at(1), pose_shellfino1.at(2), pose_gate.at(0), pose_gate.at(1), pose_gate.at(2), converted_path1, 2.0, map);
-            shelfino1_nav2 = convertDubinsPathToNavPath(dubins_path_1);
-            converted_path1.push_back({pose_gate.at(0), pose_gate.at(1)});
-            converted_path1.insert(converted_path1.begin(), {pose_shellfino1.at(0), pose_shellfino1.at(1)});
-        }
-        else
-        {
-            // reschedule for shelfino 2
-            converted_path2 = reschedule_path(converted_path2, collision_point, 0.5);
-            converted_path2.erase(converted_path2.begin());
-            converted_path2.erase(converted_path2.end());
-            dubins_path_2 = d.dubins_multi_point(pose_shellfino2.at(0), pose_shellfino2.at(1), pose_shellfino2.at(2), pose_gate.at(0), pose_gate.at(1), pose_gate.at(2), converted_path2, 2.0, map);
-            shelfino2_nav2 = convertDubinsPathToNavPath(dubins_path_2);
-            converted_path2.push_back({pose_gate.at(0), pose_gate.at(1)});
-            converted_path2.insert(converted_path2.begin(), {pose_shellfino2.at(0), pose_shellfino2.at(1)});
+            double dist = boost::geometry::distance(point_t(shelfino_pos[0], shelfino_pos[1]), pt);
+            if (dist < min_distance)
+            {
+                min_distance = dist;
+            }
         }
     }
+    return min_distance;
 }
+
