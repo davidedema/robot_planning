@@ -16,7 +16,7 @@ bool lineExists(const std::vector<line_t> &lines, const line_t &lineToCheck)
 }
 
 // Function to find bitangent lines
-std::vector<line_t> find_links(const multi_polygon_t &multipolygon)
+std::vector<line_t> find_edges_between_obstacles(const multi_polygon_t &multipolygon)
 {
     std::vector<line_t> links;
     std::vector<std::vector<point_t>> rings;
@@ -398,7 +398,7 @@ std::vector<line_t> get_cut_lines(multi_polygon_t clean, multi_polygon_t inflate
     return cut_lines;
 }
 
-std::vector<line_t> map_to_lines(const multi_polygon_t &multipolygon, const polygon_t border_polygon)
+std::vector<line_t> poly_to_lines(const multi_polygon_t &multipolygon, const polygon_t border_polygon)
 {
     using linestring = bg::model::linestring<point_t>;
     linestring border_line;
@@ -450,7 +450,7 @@ std::vector<line_t> map_to_lines(const multi_polygon_t &multipolygon, const poly
     return lines;
 }
 
-multi_polygon_t cutted_map(const multi_polygon_t &multipolygon, const std::vector<line_t> cut_lines)
+multi_polygon_t apply_cuts_to_map(const multi_polygon_t &multipolygon, const std::vector<line_t> cut_lines)
 {
     multi_polygon_t cutted_map;
     for (auto poly : multipolygon)
