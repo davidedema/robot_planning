@@ -78,8 +78,8 @@ install(TARGETS
 #### GRAPH_GEN ####
 ###################
 
-add_executable(entrypoint 
-  src/entrypoint.cpp
+add_executable(main_sampling 
+  src/main_sampling.cpp
   src/map_generator.cpp
   src/sampling_based/utils/rrt.cpp
   src/sampling_based/utils/kdtree.cpp
@@ -87,7 +87,7 @@ add_executable(entrypoint
   src/utils/orchestrator.cpp
   )
 
-ament_target_dependencies(entrypoint
+ament_target_dependencies(main_sampling
   rclcpp
   geometry_msgs
   visualization_msgs
@@ -99,12 +99,12 @@ ament_target_dependencies(entrypoint
 
 
   
-  target_link_libraries(entrypoint Boost::headers)
-  target_include_directories(entrypoint PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+  target_link_libraries(main_sampling Boost::headers)
+  target_include_directories(main_sampling PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
   
   
   install(TARGETS
-  entrypoint
+  main_sampling
   DESTINATION lib/${PROJECT_NAME}
   )
   

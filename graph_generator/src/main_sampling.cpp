@@ -21,10 +21,6 @@
 
 #include <chrono>
 
-#define DISPLAY_SAMPLES 0
-#define DISPLAY_PATH_1 0
-#define DISPLAY_PATH_2 0
-
 using namespace std;
 using namespace std::chrono;
 
