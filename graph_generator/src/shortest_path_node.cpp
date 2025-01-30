@@ -58,6 +58,69 @@ auto calculate_distance = [](const pose_t &shelfino_pos, const std::vector<polyg
   return min_distance;
 };
 
+nav_msgs::msg::Path convertDubinsPathToNavPath(const std::vector<dubins_curve> &dubins_curves)
+{
+  nav_msgs::msg::Path path_msg;
+  path_msg.header.frame_id = "map";
+  path_msg.header.stamp = rclcpp::Clock().now();
+
+  for (const auto &curve : dubins_curves)
+  {
+    auto add_arc_points_to_path = [&](const dubins_arc &arc)
+    {
+      double step = 0.05; // Step size for sampling points along the arc
+      double theta = arc.th0;
+
+      if (std::abs(arc.k) < 1e-6)
+      {
+        // Straight-line case
+        for (double s = 0; s <= arc.L; s += step)
+        {
+          geometry_msgs::msg::PoseStamped pose;
+          pose.header = path_msg.header;
+          pose.pose.position.x = arc.x0 + s * cos(theta);
+          pose.pose.position.y = arc.y0 + s * sin(theta);
+          pose.pose.position.z = 0.0;
+          tf2::Quaternion quat(0, 0, sin(theta / 2), cos(theta / 2));
+          pose.pose.orientation.x = quat.x();
+          pose.pose.orientation.y = quat.y();
+          pose.pose.orientation.z = quat.z();
+          pose.pose.orientation.w = quat.w();
+
+          path_msg.poses.push_back(pose);
+        }
+      }
+      else
+      {
+        // Curved case
+        double radius = 1.0 / arc.k;
+        for (double s = 0; s <= arc.L; s += step)
+        {
+          geometry_msgs::msg::PoseStamped pose;
+          pose.header = path_msg.header;
+          pose.pose.position.x = arc.x0 + radius * (sin(theta + arc.k * s) - sin(theta));
+          pose.pose.position.y = arc.y0 + radius * (cos(theta) - cos(theta + arc.k * s));
+          pose.pose.position.z = 0.0;
+          tf2::Quaternion quat(0, 0, sin(theta / 2), cos(theta / 2));
+          pose.pose.orientation.x = quat.x();
+          pose.pose.orientation.y = quat.y();
+          pose.pose.orientation.z = quat.z();
+          pose.pose.orientation.w = quat.w();
+
+          path_msg.poses.push_back(pose);
+        }
+      }
+    };
+
+    // Add points from all arcs in the Dubins curve
+    add_arc_points_to_path(curve.a1);
+    add_arc_points_to_path(curve.a2);
+    add_arc_points_to_path(curve.a3);
+  }
+
+  return path_msg;
+}
+
 template <typename... Args>
 void log_message(rclcpp::Logger logger, rclcpp::Logger::Level level, Args &&...args)
 {
@@ -85,7 +148,7 @@ void log_message(rclcpp::Logger logger, rclcpp::Logger::Level level, Args &&...a
   }
 }
 
-#define TOLLERANCE  SHELFINO_INFLATION*2
+#define TOLLERANCE SHELFINO_INFLATION * 2
 
 int main(int argc, char **argv)
 {
@@ -145,19 +208,13 @@ int main(int argc, char **argv)
   {
     map_poly.emplace_back(poly);
   }
-  //map_poly.emplace_back(inflated_border);
-
-
+  // map_poly.emplace_back(inflated_border);
 
   auto map_in_lines = poly_to_lines(map_poly, inflated_border);
-
-
 
   auto shellfino1_edges_to_map = find_shellfino_map_links(cleaned_obstacles, position_shellfino_1, position_gate);
   auto shellfino2_edges_to_map = find_shellfino_map_links(cleaned_obstacles, position_shellfino_2, position_gate);
   auto gate_edges_to_map = find_point_map_links(cleaned_obstacles, position_gate);
-
-
 
   std::vector<line_t>
       edges_between_obstacles = find_edges_between_obstacles(cutted_obstacles);
@@ -172,13 +229,14 @@ int main(int argc, char **argv)
   log_message(logger_class, log_level, "\033[1;32m Dubinizing \033[0m");
 
   // From optimal theoretical path -> physical movement---------------------------------------------------------------------------
-
-  nav_msgs::msg::Path shelfino1_nav2, shelfino2_nav2;
-  auto obstacles = m->get_obstacles();
-  //  genearateMovementPath(shelfino1_nav2, shelfino2_nav2, points_path1, points_path2, pose_shellfino1, pose_shellfino2, pose_gate, map);
-
+  KDNode_t start_shelfino1 = {mappa->get_pose1().at(0), mappa->get_pose1().at(1)};
+  KDNode_t start_shelfino2 = {mappa->get_pose2().at(0), mappa->get_pose2().at(1)};
+  KDNode_t goal = {mappa->get_gate().at(0), mappa->get_gate().at(1)};
   auto converted_path1 = convert_points(points_path1);
   auto converted_path2 = convert_points(points_path2);
+  Dubins d;
+  std::vector<struct dubins_curve> shelfino1_d_path;
+  std::vector<struct dubins_curve> shelfino2_d_path;
 
   std::reverse(converted_path1.begin(), converted_path1.end());
   converted_path1.erase(converted_path1.begin());
@@ -188,10 +246,28 @@ int main(int argc, char **argv)
   converted_path2.erase(converted_path2.begin());
   converted_path2.erase(converted_path2.end());
 
-  Dubins d;
+  try
+  {
+    shelfino1_d_path = d.dubins_multi_point(start_shelfino1.at(0), start_shelfino1.at(1), mappa->get_pose1().at(2), goal.at(0), goal.at(1), mappa->get_gate().at(2), converted_path1, 3, map);
+    shelfino2_d_path = d.dubins_multi_point(start_shelfino2.at(0), start_shelfino2.at(1), mappa->get_pose2().at(2), goal.at(0), goal.at(1), mappa->get_gate().at(2), converted_path2, 3, map);
+    RCLCPP_INFO(m->get_logger(), "Builded Dubins");
+  }
+  catch (const std::exception &e)
+  {
+    RCLCPP_ERROR(m->get_logger(), "Error in Dubins");
+  }
+  converted_path1.push_back({goal.at(0), goal.at(1)});
+  converted_path1.insert(converted_path1.begin(), {start_shelfino1.at(0), start_shelfino1.at(1)});
+  converted_path2.push_back({goal.at(0), goal.at(1)});
+  converted_path2.insert(converted_path2.begin(), {start_shelfino2.at(0), start_shelfino2.at(1)});
 
-  auto dubins_path_1 = d.dubins_multi_point(pose_shellfino1.at(0), pose_shellfino1.at(1), pose_shellfino1.at(2), pose_gate.at(0), pose_gate.at(1), pose_gate.at(2), converted_path1, 2, map);
-  auto dubins_path_2 = d.dubins_multi_point(pose_shellfino2.at(0), pose_shellfino2.at(1), pose_shellfino2.at(2), pose_gate.at(0), pose_gate.at(1), pose_gate.at(2), converted_path2, 2, map);
+  nav_msgs::msg::Path shelfino1_nav2, shelfino2_nav2;
+
+  shelfino1_nav2 = convertDubinsPathToNavPath(shelfino1_d_path);
+  shelfino2_nav2 = convertDubinsPathToNavPath(shelfino2_d_path);
+
+  auto obstacles = m->get_obstacles();
+  //  genearateMovementPath(shelfino1_nav2, shelfino2_nav2, points_path1, points_path2, pose_shellfino1, pose_shellfino2, pose_gate, map);
 
   // Check collisions between the two paths
   RCLCPP_INFO(m->get_logger(), "\033[1;32m Collision checking \033[0m");
@@ -205,10 +281,6 @@ int main(int argc, char **argv)
   // Scoring logic
   double shelfino1_score = shelfino1_distance > 1.0 ? shelfino1_distance * 10 : 0; // Example scoring rule
   double shelfino2_score = shelfino2_distance > 1.0 ? shelfino2_distance * 10 : 0;
-  std::vector<KDNode_t> shelfino1_path = convert_points(points_path1);
-  std::vector<KDNode_t> shelfino2_path = convert_points(points_path2);
-  Dubins d;
-  std::vector<dubins_curve> shelfino1_d_path;
 
   while (!solved_collision)
   {
@@ -222,12 +294,12 @@ int main(int argc, char **argv)
       // who has the largest score has to deviate the path
       if (shelfino1_score < shelfino2_score)
       {
-        shelfino1_path = reschedule_path(shelfino1_path, {bg::get<0>(position_shellfino_1), bg::get<1>(position_shellfino_1)}, map);
-        shelfino1_path.erase(shelfino1_path.begin());
-        shelfino1_path.erase(shelfino1_path.end());
+        converted_path1 = reschedule_path(converted_path1, start_shelfino1, map);
+        converted_path1.erase(converted_path1.begin());
+        converted_path1.erase(converted_path1.end());
         try
         {
-          shelfino1_d_path = d.dubins_multi_point(bg::get<0>(position_shellfino_1), bg::get<1>(position_shellfino_1), m->get_pose1().at(2), bg::get<0>(position_gate), bg::get<0>(position_gate), m->get_gate().at(2), shelfino1_path, 2, map);
+          shelfino1_d_path = d.dubins_multi_point(start_shelfino1.at(0), start_shelfino1.at(1), m->get_pose1().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), converted_path1, 3, map);
         }
         catch (const std::exception &e)
         {
@@ -235,18 +307,18 @@ int main(int argc, char **argv)
           continue;
         }
         shelfino1_nav2 = convertDubinsPathToNavPath(shelfino1_d_path);
-        shelfino1_path.push_back({pose_gate.at(0), pose_gate.at(1)});
-        shelfino1_path.insert(shelfino1_path.begin(), {bg::get<0>(position_shellfino_1), bg::get<1>(position_shellfino_1)});
+        converted_path1.push_back({goal.at(0), goal.at(1)});
+        converted_path1.insert(converted_path1.begin(), {start_shelfino1.at(0), start_shelfino1.at(1)});
       }
       else
       {
         // reschedule for shelfino 2
-        shelfino2_path = reschedule_path(shelfino2_path, pose_shelfino2, map);
-        shelfino2_path.erase(shelfino2_path.begin());
-        shelfino2_path.erase(shelfino2_path.end());
+        converted_path2 = reschedule_path(converted_path2, start_shelfino2, map);
+        converted_path2.erase(converted_path2.begin());
+        converted_path2.erase(converted_path2.end());
         try
         {
-          shelfino2_d_path = d.dubins_multi_point(start_shelfino2.at(0), start_shelfino2.at(1), m->get_pose2().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), shelfino2_path, kmax, map);
+          shelfino2_d_path = d.dubins_multi_point(start_shelfino2.at(0), start_shelfino2.at(1), m->get_pose2().at(2), goal.at(0), goal.at(1), m->get_gate().at(2), converted_path1, 3, map);
         }
         catch (const std::exception &e)
         {
@@ -254,8 +326,8 @@ int main(int argc, char **argv)
           continue;
         }
         shelfino2_nav2 = convertDubinsPathToNavPath(shelfino2_d_path);
-        shelfino2_path.push_back({goal.at(0), goal.at(1)});
-        shelfino2_path.insert(shelfino2_path.begin(), {start_shelfino2.at(0), start_shelfino2.at(1)});
+        converted_path2.push_back({goal.at(0), goal.at(1)});
+        converted_path2.insert(converted_path2.begin(), {start_shelfino2.at(0), start_shelfino2.at(1)});
       }
     }
     else
@@ -265,7 +337,6 @@ int main(int argc, char **argv)
     }
   }
 
-  RCLCPP_INFO(m->get_logger(), "Time taken by function: %ld seconds", duration.count());
 
   RCLCPP_INFO(m->get_logger(), "\033[1;32m Sending paths to nav2 controller \033[0m");
 
@@ -279,10 +350,6 @@ int main(int argc, char **argv)
     throw std::runtime_error("Empty path 1");
     return -1;
   }
-  node->send_nav2(shelfino1_nav2, shelfino2_nav2);
-
-
-
 
   //-----------------------------------------------------------------------
   std::vector<line_t>
