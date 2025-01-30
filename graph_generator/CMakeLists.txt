@@ -80,7 +80,7 @@ install(TARGETS
 
 add_executable(entrypoint 
   src/entrypoint.cpp
-  src/graph_node.cpp
+  src/map_generator.cpp
   src/sampling_based/utils/rrt.cpp
   src/sampling_based/utils/kdtree.cpp
   src/utils/dubins.cpp

@@ -1,12 +1,14 @@
 #include "graph_generator/sampling_based/utils/rrt.hpp"
 
-RRT::RRT()
-{
-  // initialize the tree
-}
+RRT::RRT() {}
 
 RRT::~RRT() {}
-
+/**
+ * @brief Generates a random point using the Halton sequence.
+ * @param index The index for Halton sequence generation.
+ * @param map The map in which the point must be valid.
+ * @return A randomly sampled valid point, or an invalid placeholder if no valid point is found.
+ */
 KDNode_t RRT::get_random_point(int index, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
   // generate Halton sequence value for a given index and base
@@ -48,6 +50,13 @@ KDNode_t RRT::get_random_point(int index, boost::geometry::model::multi_polygon<
   return sampled_point;
 }
 
+/**
+ * @brief Computes the next point in the RRT expansion.
+ * @param sampled_point The randomly sampled point.
+ * @param nearest The nearest node in the tree.
+ * @param map The map to validate the new point.
+ * @return The new point if valid, otherwise a placeholder for an invalid point.
+ */
 KDNode_t RRT::next_point(KDNode_t &sampled_point, KDNode_t &nearest, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
   // from sampled point and nearest point get the candidate point
@@ -77,7 +86,12 @@ KDNode_t RRT::next_point(KDNode_t &sampled_point, KDNode_t &nearest, boost::geom
   }
   return {-1000, -1000};
 }
-
+/**
+ * @brief Checks if two nodes are equal.
+ * @param a The first node.
+ * @param b The second node.
+ * @return True if nodes are equal, false otherwise.
+ */
 bool RRT::are_nodes_equal(const KDNode_t &a, const KDNode_t &b)
 {
   // Check if sizes are equal
@@ -94,11 +108,16 @@ bool RRT::are_nodes_equal(const KDNode_t &a, const KDNode_t &b)
   }
   return true;
 }
-
+/**
+ * @brief Adds an edge between new_node and nearest_node if valid.
+ * @param new_node The new node to be added.
+ * @param nearest_node The nearest existing node in the tree.
+ * @param map The map used for validity check.
+ * @return True if the edge is successfully added, false otherwise.
+ */
 bool RRT::add_edge(KDNode_t &new_node, KDNode_t &nearest_node, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
   //  add path between new_node and nearest_node
-  //! if the path and the points are inside the polygon
   if (valid_segment(new_node, nearest_node, map))
   {
     auto v_new = boost::add_vertex(g);
@@ -122,11 +141,17 @@ bool RRT::add_edge(KDNode_t &new_node, KDNode_t &nearest_node, boost::geometry::
   }
   return false;
 }
-
+/**
+ * @brief Attaches a new node to an existing one, updating parent-child relationships.
+ * @param new_node The new node to be attached.
+ * @param nearest_node The nearest node to attach to.
+ * @param map The map for validation.
+ * @return True if attachment is successful, false otherwise.
+ */
 bool RRT::attach_node(KDNode_t &new_node, KDNode_t &nearest_node, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
   //  add path between new_node and nearest_node
-  //! if the path and the points are inside the polygon
+
   if (valid_segment(new_node, nearest_node, map))
   {
     auto v_new = boost::add_vertex(g);
@@ -150,7 +175,11 @@ bool RRT::attach_node(KDNode_t &new_node, KDNode_t &nearest_node, boost::geometr
   }
   return false;
 }
-
+/**
+ * @brief Adds a new node to the graph.
+ * @param new_node The node to be added.
+ * @return Always returns true.
+ */
 bool RRT::add_node(KDNode_t &new_node)
 {
   auto v_new = boost::add_vertex(g);
@@ -162,6 +191,12 @@ bool RRT::add_node(KDNode_t &new_node)
   return true;
 }
 
+/**
+ * @brief Checks if a point is valid within the map.
+ * @param sampled_point The point to be checked.
+ * @param map The map used for validation.
+ * @return True if the point is valid, false otherwise.
+ */
 bool RRT::valid_point(KDNode_t &sampled_point, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
   point_t aux_point;
@@ -171,6 +206,13 @@ bool RRT::valid_point(KDNode_t &sampled_point, boost::geometry::model::multi_pol
   return boost::geometry::within(aux_point, map);
 }
 
+/**
+ * @brief Checks if a segment is valid within the map.
+ * @param start The start of the segment.
+ * @param end The end of the segment.
+ * @param map The map used for validation.
+ * @return True if the segment is valid, false otherwise.
+ */
 bool RRT::valid_segment(KDNode_t &start, KDNode_t &end, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
   // check if a segment with start and end points whole within the polygon map
@@ -179,14 +221,20 @@ bool RRT::valid_segment(KDNode_t &start, KDNode_t &end, boost::geometry::model::
   point_t start_point = point_t(start.at(0), start.at(1));
   point_t end_point = point_t(end.at(0), end.at(1));
   polygon_t segment;
-  this->create_inflated_polygon(start_point, end_point, 0.001, segment);
+  this->create_inflated_polygon(start_point, end_point, 0.01, segment);
   if (boost::geometry::within(segment, map))
   {
     return true;
   }
   return false;
 }
-
+/**
+ * @brief Inflates a segment into a polygon for collision checking.
+ * @param p1 The first point of the segment.
+ * @param p2 The second point of the segment.
+ * @param epsilon The inflation radius.
+ * @param polygon The resulting inflated polygon.
+ */
 void RRT::create_inflated_polygon(
     const point_t &p1,
     const point_t &p2,
@@ -226,22 +274,33 @@ void RRT::create_inflated_polygon(
   polygon.outer().push_back(corner4);
   polygon.outer().push_back(corner1); // Close the polygon
 }
-
+/**
+ * @brief Adds a node to the KDTree.
+ * @param node The node to be added.
+ */
 void RRT::add_kd_node(KDNode_t &node)
 {
   nodes.push_back(node);
 }
-
+/**
+ * @brief Finds the nearest neighbor to a sampled point.
+ * @param sampled_point The point to find the nearest neighbor for.
+ * @param n_k The number of nearest neighbors to consider.
+ * @return The nearest node.
+ */
 KDNode_t RRT::get_nn(KDNode_t &sampled_point, int n_k)
 {
   Kdtree::KdTree tree(&nodes);
   Kdtree::KdNodeVector result;
   tree.k_nearest_neighbors(sampled_point, n_k, &result);
-  // TODO: molto hardcoded questa parte
   KDNode_t ret{result[0].point[0], result[0].point[1]};
   return ret;
 }
-
+/**
+ * @brief Checks if a given point is the goal.
+ * @param point The point to check.
+ * @return True if the point is within the goal radius, false otherwise.
+ */
 bool RRT::is_goal(KDNode_t &point)
 {
   double goal_radius = 0.85;
@@ -252,14 +311,22 @@ bool RRT::is_goal(KDNode_t &point)
 
   return distance <= goal_radius;
 }
-
+/**
+ * @brief Sets the start and goal for the RRT.
+ * @param start The start node.
+ * @param goal The goal node.
+ */
 void RRT::set_problem(KDNode_t &start, KDNode_t &goal)
 {
   this->start = start;
   this->goal = goal;
   this->add_node(start);
 }
-
+/**
+ * @brief Retrieves the path from a given start point to the goal.
+ * @param start The starting point.
+ * @return The computed path as a sequence of nodes.
+ */
 std::vector<KDNode_t> RRT::get_path(KDNode_t &start)
 {
   std::vector<KDNode_t> path;
@@ -280,13 +347,24 @@ std::vector<KDNode_t> RRT::get_path(KDNode_t &start)
   return path;
 }
 
+/**
+ * @brief Retrieves the current graph.
+ * @return The graph representation of the RRT.
+ */
 Graph RRT::get_graph()
 {
   return this->g;
 }
 
 //----------- RRT* METHODS -----------//
-
+/**
+ * @brief Finds the best neighbor for a node based on cost.
+ * @param new_point The new node.
+ * @param old_neigh The initial nearest neighbor.
+ * @param range The search range.
+ * @param map The map for validation.
+ * @return The best neighbor node.
+ */
 KDNode_t RRT::get_best_neighbor(KDNode_t &new_point, KDNode_t &old_neigh, double range, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
   double current_cost, distance, best_cost;
@@ -310,7 +388,12 @@ KDNode_t RRT::get_best_neighbor(KDNode_t &new_point, KDNode_t &old_neigh, double
 
   return best;
 }
-
+/**
+ * @brief Rewires the tree by improving connections.
+ * @param new_point The new node to rewire from.
+ * @param range The range to search for neighbors.
+ * @param map The map for validation.
+ */
 void RRT::rewire(KDNode_t &new_point, double range, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
   auto node_index = graph_lookup[new_point];
@@ -341,7 +424,12 @@ void RRT::rewire(KDNode_t &new_point, double range, boost::geometry::model::mult
 }
 
 // ------------- SMOOTH ---------- //
-
+/**
+ * @brief Smooths the generated path by removing unnecessary waypoints.
+ * @param path The original path.
+ * @param map The map for validation.
+ * @return A smoother version of the path.
+ */
 std::vector<KDNode_t> RRT::smooth_path(std::vector<KDNode_t> &path, boost::geometry::model::multi_polygon<polygon_t> &map)
 {
   // try to smooth the path
@@ -372,20 +460,19 @@ std::vector<KDNode_t> RRT::smooth_path(std::vector<KDNode_t> &path, boost::geome
     {
       --i;
       point_b = path.at(i);
-
-      // try{
-      //   point_b = path.at(i);
-      // }
-      // catch(const std::out_of_range& e){
-      //   finish = true;
-      //   new_path = path;
-      // }
+    }
+    if (i == 0)
+    {
+      finish = true;
     }
   }
 
   return new_path;
 }
-
+/**
+ * @brief Retrieves the lookup table for the graph.
+ * @return A map associating nodes with graph vertices.
+ */
 std::map<KDNode_t, vertex_t> RRT::get_lookup()
 {
   return this->graph_lookup;
