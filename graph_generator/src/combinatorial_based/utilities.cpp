@@ -12,5 +12,8 @@ std::vector<std::vector<double>> convert_points(std::vector<point_t> points){
         new_point.push_back(bg::get<1>(point));
         new_points.push_back(new_point);
     }
+    std::reverse(new_points.begin(), new_points.end());
+    new_points.erase(new_points.begin());
+    new_points.erase(new_points.end());
     return new_points;
 }
