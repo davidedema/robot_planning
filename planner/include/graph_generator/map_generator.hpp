@@ -15,8 +15,6 @@
 #include "geometry_msgs/msg/pose.hpp"
 #include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
 
-#define SHELFINO_INFLATION 0.5
-
 typedef boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> point_t;
 typedef boost::geometry::model::polygon<point_t> polygon_t;
 
@@ -43,6 +41,10 @@ public:
   MapGenerator();
   ~MapGenerator();
 
+  double get_shelfino_inflation() const {
+    return this->get_parameter("shelfino_inflation").as_double();
+  }
+
   // callbacks for the subscribers
   void callback_borders(const geometry_msgs::msg::Polygon::SharedPtr msg);
   void callback_obstacles(const obstacles_msgs::msg::ObstacleArrayMsg::SharedPtr msg);
@@ -57,6 +59,8 @@ public:
   bool pos1_r_;
   bool pos2_r_;
   
+
+  double inflation_value;
   // flag for map creation
   bool is_map_created;
 

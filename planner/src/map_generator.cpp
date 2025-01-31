@@ -16,6 +16,14 @@ MapGenerator::MapGenerator() : Node("MapGenerator")
 
   const auto qos = rclcpp::QoS(rclcpp::KeepLast(1), qos_profile_custom1);
 
+  // Declare the parameter with a default value (0.5)
+  this->declare_parameter("shelfino_inflation", 0.5);
+
+  // Example usage
+  inflation_value = get_shelfino_inflation();
+  RCLCPP_INFO(this->get_logger(), "Shelfino inflation set to: %f", inflation_value);
+
+
   subscription_borders_ = this->create_subscription<geometry_msgs::msg::Polygon>(
       "/map_borders", qos, std::bind(&MapGenerator::callback_borders, this, std::placeholders::_1));
   subscription_obstacles_ = this->create_subscription<obstacles_msgs::msg::ObstacleArrayMsg>(
@@ -161,7 +169,7 @@ void MapGenerator::inflate_obstacles()
 
     boost::geometry::model::multi_polygon<polygon_t> inflated_polygon;
     // Inflate the polygon using Boost's buffer algorithm
-    boost::geometry::strategy::buffer::distance_symmetric<double> distance_strategy(SHELFINO_INFLATION);
+    boost::geometry::strategy::buffer::distance_symmetric<double> distance_strategy(this->get_shelfino_inflation());
     boost::geometry::strategy::buffer::join_round join_strategy(36);     // Round joins
     boost::geometry::strategy::buffer::end_round end_strategy(36);       // Round ends
     boost::geometry::strategy::buffer::point_circle circle_strategy(36); // Circle approximation
@@ -205,7 +213,7 @@ void MapGenerator::set_borders(const geometry_msgs::msg::Polygon &msg)
   map_borders.outer().push_back(map_borders.outer().front());
 
   // Inflate the polygon using Boost's buffer algorithm
-  boost::geometry::strategy::buffer::distance_symmetric<double> distance_strategy(-SHELFINO_INFLATION);
+  boost::geometry::strategy::buffer::distance_symmetric<double> distance_strategy(inflation_value);
   boost::geometry::strategy::buffer::join_round join_strategy(36);     // Round joins
   boost::geometry::strategy::buffer::end_round end_strategy(36);       // Round ends
   boost::geometry::strategy::buffer::point_circle circle_strategy(36); // Circle approximation

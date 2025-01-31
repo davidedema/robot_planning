@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(graph_generator)
+project(planner)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -34,8 +34,8 @@ set(CLIPPER_SRC
 
 
 
-add_executable(test_shortest_path
-  src/shortest_path_node.cpp
+add_executable(main_combinatorial
+  src/main_combinatorial.cpp
   src/combinatorial_based/map_construction.cpp
   src/combinatorial_based/marker_publishers/map_edges_publisher.cpp
   src/combinatorial_based/marker_publishers/PointMarker.cpp
@@ -52,7 +52,7 @@ add_executable(test_shortest_path
   ${CLIPPER_SRC}
 )
 
-  ament_target_dependencies(test_shortest_path
+  ament_target_dependencies(main_combinatorial
   rclcpp
   geometry_msgs
   visualization_msgs
@@ -63,14 +63,14 @@ add_executable(test_shortest_path
 )
 
 install(TARGETS
-  test_shortest_path
+  main_combinatorial
   DESTINATION lib/${PROJECT_NAME}
 )
 
-# ament_target_dependencies(graph_generator rclcpp geometry_msgs obstacles_msgs)
+# ament_target_dependencies(planner rclcpp geometry_msgs obstacles_msgs)
 
 # install(TARGETS
-#   graph_generator
+#   planner
 #   DESTINATION lib/${PROJECT_NAME}
 # )
 
