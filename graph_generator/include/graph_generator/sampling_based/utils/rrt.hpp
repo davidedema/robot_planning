@@ -42,7 +42,7 @@ class RRT
 private:
   uint samples = 100;
   double d_max = 0.5;
-  double d = 0.25;
+  double d = 0.5;
   KDNode_t start;
   KDNode_t goal;
   std::map<KDNode_t, vertex_t> graph_lookup;
