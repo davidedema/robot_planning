@@ -16,12 +16,12 @@ ros2 launch projects evacuation.launch.py use_rviz:=false
 
 Run planner + nav2 client
 ```
-ros2 launch graph_generator sampling.launch.py
+ros2 launch planner sampling.launch.py
 ```
 
 ## Combinatorial based
 
 Run planner + nav2 client
 ```
-ros2 launch graph_generator combinatorial.launch.py
+ros2 launch planner combinatorial.launch.py
 ```
