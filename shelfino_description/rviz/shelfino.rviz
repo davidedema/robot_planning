@@ -85,7 +85,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /shelfinoX/odom
+        Value: /shelfino/odom
       Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
@@ -116,7 +116,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Best Effort
-        Value: /shelfinoX/scan
+        Value: /shelfino/scan
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
@@ -125,15 +125,15 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        shelfinoX/base_laser:
+        shelfino/base_laser:
           Value: true
-        shelfinoX/base_link:
+        shelfino/base_link:
           Value: true
-        shelfinoX/left_wheel:
+        shelfino/left_wheel:
           Value: true
-        shelfinoX/odom:
+        shelfino/odom:
           Value: true
-        shelfinoX/right_wheel:
+        shelfino/right_wheel:
           Value: true
       Marker Scale: 1
       Name: TF
@@ -141,27 +141,27 @@ Visualization Manager:
       Show Axes: true
       Show Names: false
       Tree:
-        shelfinoX/odom:
-          shelfinoX/base_link:
-            shelfinoX/base_laser:
+        shelfino/odom:
+          shelfino/base_link:
+            shelfino/base_laser:
               {}
-            shelfinoX/left_wheel:
+            shelfino/left_wheel:
               {}
-            shelfinoX/right_wheel:
+            shelfino/right_wheel:
               {}
       Update Interval: 0
       Value: true
     - Alpha: 1
       Class: rviz_default_plugins/RobotModel
       Collision Enabled: false
-      Description File: /home/eecs/ros2_ws/src/shelfino_description/models/shelfino/shelfinoX.urdf
+      Description File: /home/eecs/ros2_ws/src/shelfino_description/models/shelfino/shelfino.urdf
       Description Source: Topic
       Description Topic:
         Depth: 5
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /shelfinoX/robot_description
+        Value: /shelfino/robot_description
       Enabled: true
       Links:
         All Links Enabled: true
@@ -169,22 +169,22 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        shelfinoX/base_laser:
+        shelfino/base_laser:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        shelfinoX/base_link:
+        shelfino/base_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        shelfinoX/left_wheel:
+        shelfino/left_wheel:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        shelfinoX/right_wheel:
+        shelfino/right_wheel:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -197,7 +197,7 @@ Visualization Manager:
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
-    Fixed Frame: shelfinoX/odom
+    Fixed Frame: shelfino/odom
     Frame Rate: 30
   Name: root
   Tools:

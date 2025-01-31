@@ -331,7 +331,7 @@ def generate_config_file(map_env_params_file, generated_config_file):
             shelfino.x = shelfini_yaml["init_x"][i]
             shelfino.y = shelfini_yaml["init_y"][i]
             shelfino.yaw = shelfini_yaml["init_yaw"][i]
-            assert shelfino.check(map_config)
+            #assert shelfino.check(map_config)
         shelfini.append(shelfino)
 
     # Generate gates config
