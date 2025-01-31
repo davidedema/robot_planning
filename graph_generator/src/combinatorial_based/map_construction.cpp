@@ -341,7 +341,7 @@ multi_polygon_t MapConstruction::get_inflated_map()
         ClipperLib::ClipperOffset clipperOffset;
         clipperOffset.AddPaths(clipper_poly1, ClipperLib::jtMiter, ClipperLib::etClosedPolygon);
         ClipperLib::Paths paths_inflated_border;
-        clipperOffset.Execute(paths_inflated_border, -SHELFINO_INFLATION * 1000);
+        clipperOffset.Execute(paths_inflated_border, -(SHELFINO_INFLATION*1.1) * 1000);
         inflated_borders = (this->clipperToBoost(paths_inflated_border[0]));
 
         // inflate obstacles
@@ -354,7 +354,7 @@ multi_polygon_t MapConstruction::get_inflated_map()
             ClipperLib::Paths clipper_poly1 = this->boostToClipper(polygon);
             ClipperLib::ClipperOffset clipperOffset;
             clipperOffset.AddPaths(clipper_poly1, ClipperLib::jtMiter, ClipperLib::etClosedPolygon);
-            clipperOffset.Execute(inflated_path_obstacles, SHELFINO_INFLATION * 1000);
+            clipperOffset.Execute(inflated_path_obstacles, (SHELFINO_INFLATION * 1.1) * 1000);
             inflated_vect_paths.emplace_back(inflated_path_obstacles[0]);
         }
 

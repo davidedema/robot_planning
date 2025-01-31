@@ -115,18 +115,25 @@ int main(int argc, char **argv)
 
   log_message(logger_class, log_level, "\033[1;32m Dubinizing \033[0m");
 
-  // From optimal theoretical path -> physical movement---------------------------------------------------------------------------
-  KDNode_t start_shelfino1 = {mappa->get_pose1().at(0), mappa->get_pose1().at(1)};
-  KDNode_t start_shelfino2 = {mappa->get_pose2().at(0), mappa->get_pose2().at(1)};
-  KDNode_t goal = {mappa->get_gate().at(0), mappa->get_gate().at(1)};
-  auto converted_path1 = convert_points(points_path1);
-  auto converted_path2 = convert_points(points_path2);
-  nav_msgs::msg::Path shelfino1_nav2, shelfino2_nav2;
-  generateMovementPath(shelfino1_nav2, shelfino2_nav2, converted_path1, converted_path2, pose_shellfino1, pose_shellfino2, pose_gate, map, m->get_obstacles());
+  // From optimal theoretical path -> physical movement ---------------------------------------------------------------------------
+  bool dubins_found = false;
+  auto dubins_publisher = std::make_shared<PointMarkerNode>();
+  try
+  {
+    auto converted_path1 = convert_points(points_path1);
+    auto converted_path2 = convert_points(points_path2);
+    nav_msgs::msg::Path shelfino1_nav2, shelfino2_nav2;
+    generateMovementPath(shelfino1_nav2, shelfino2_nav2, converted_path1, converted_path2, pose_shellfino1, pose_shellfino2, pose_gate, map, mappa->get_obstacles());
 
-  //-----------------------------------------------------------------------
-  std::vector<line_t>
-      lines_path1;
+    dubins_publisher->send_nav2(shelfino1_nav2, shelfino2_nav2);
+    dubins_found = true;
+  }
+  catch (const std::exception &e){
+    log_message(logger_class, rclcpp::Logger::Level::Error, e.what());
+  }
+      //-----------------------------------------------------------------------
+      std::vector<line_t>
+          lines_path1;
   for (size_t i = 0; i < points_path1.size() - 1; i++)
   {
     lines_path1.emplace_back(line_t({points_path1[i], points_path1[i + 1]}));
@@ -141,8 +148,7 @@ int main(int argc, char **argv)
   std::chrono::duration<double, std::milli> duration = end - start;
   log_message(logger_class, log_level, "\033[1;32m Map building and search time: ", duration.count(), " ms \033[0m");
 
-  auto dubins_publisher = std::make_shared<PointMarkerNode>();
-  dubins_publisher->send_nav2(shelfino1_nav2, shelfino2_nav2);
+
 
   auto cleaned_obstacles_publisher = std::make_shared<MapEdgePublisherNode>(cleaned_obstacles, "cleaned_obstacles");
   multi_polygon_t pollo;
@@ -164,7 +170,8 @@ int main(int argc, char **argv)
 
   while (true)
   {
-    rclcpp::spin_some(dubins_publisher);
+    if(dubins_found)
+      rclcpp::spin_some(dubins_publisher);
     rclcpp::spin_some(inflated_border_publisher);
 
     rclcpp::spin_some(raw_obstacles_publisher);

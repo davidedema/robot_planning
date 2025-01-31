@@ -419,10 +419,7 @@ std::vector<line_t> poly_to_lines(const multi_polygon_t &multipolygon, const pol
                 pb = i - 1;
                 (i == ring.size()) ? pa = 0 : pa = i;
                 line_t line = line_t({ring[pb], ring[pa]});
-                point_t midpoint(
-                    (bg::get<0>(ring[pb]) + bg::get<0>(ring[pa])) / 2.0, // Average x-coordinates
-                    (bg::get<1>(ring[pb]) + bg::get<1>(ring[pa])) / 2.0  // Average y-coordinates
-                );
+
                 // if is the line id
                 if (!(bg::intersects(ring[pb], border_line) || bg::intersects(ring[pa], border_line)))
                     lines.emplace_back(line);
@@ -433,12 +430,14 @@ std::vector<line_t> poly_to_lines(const multi_polygon_t &multipolygon, const pol
     auto ring = border_polygon.outer();
     for (size_t i = 0; i < ring.size(); i++)
     {
+        {
         int pa, pb; // point after, point before
         pb = i - 1;
         (i == ring.size()) ? pa = 0 : pa = i;
 
         line_t line = line_t({ring[pb], ring[pa]});
         lines.emplace_back(line);
+        }
     }
 
     for (auto border_point : border_polygon.outer())
